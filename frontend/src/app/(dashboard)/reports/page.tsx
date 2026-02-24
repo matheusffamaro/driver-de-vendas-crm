@@ -128,9 +128,9 @@ export default function ReportsPage() {
   const isLoading = pipelinesLoading || reportLoading
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 min-w-0">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
             <div className="p-2 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600">
@@ -143,24 +143,24 @@ export default function ReportsPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 min-w-0 w-full overflow-x-auto pb-1">
           {canFilterBySalesperson && (
             <>
               <div className="flex items-center gap-2">
                 <UserCircle className="w-4 h-4 text-gray-500" />
-                <select
-                  value={selectedUserId ?? ''}
-                  onChange={(e) => setSelectedUserId(e.target.value || null)}
-                  className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2 text-sm
+            <select
+              value={selectedUserId ?? ''}
+              onChange={(e) => setSelectedUserId(e.target.value || null)}
+              className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl px-3 py-2 text-sm min-w-0
                              focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-                >
+            >
                   <option value="">Todos os vendedores</option>
                   {usersList.map((u: any) => (
                     <option key={u.id} value={u.id}>{u.name}</option>
                   ))}
                 </select>
               </div>
-              <div className="flex rounded-xl overflow-hidden border border-gray-300 dark:border-gray-700">
+              <div className="flex rounded-xl overflow-hidden border border-gray-300 dark:border-gray-700 min-w-0 flex-wrap sm:flex-nowrap">
                 <button
                   type="button"
                   onClick={() => setViewMode('summary')}
@@ -184,7 +184,7 @@ export default function ReportsPage() {
             <select
               value={selectedPipelineId || activePipeline?.id || ''}
               onChange={(e) => setSelectedPipelineId(e.target.value)}
-              className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm
+              className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl px-4 py-2.5 text-sm min-w-0
                          focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
             >
               {pipelines.map((pipeline: any) => (
@@ -210,54 +210,54 @@ export default function ReportsPage() {
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
           >
             {/* Total Leads */}
-            <div className="stat-card">
+            <div className="stat-card min-w-0 overflow-hidden">
               <div className="flex items-center justify-between">
-                <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center flex-shrink-0">
                   <Kanban className="w-6 h-6 text-purple-500" />
                 </div>
               </div>
-              <div className="mt-4">
+              <div className="mt-4 min-w-0">
                 <p className="text-sm text-gray-500 dark:text-gray-400">Total de Leads</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{totalCards}</p>
+                <p className="text-base sm:text-2xl font-bold text-gray-900 dark:text-white mt-1 truncate">{totalCards}</p>
               </div>
             </div>
 
             {/* Conversion Rate */}
-            <div className="stat-card">
+            <div className="stat-card min-w-0 overflow-hidden">
               <div className="flex items-center justify-between">
-                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
                   <Target className="w-6 h-6 text-emerald-500" />
                 </div>
               </div>
-              <div className="mt-4">
+              <div className="mt-4 min-w-0">
                 <p className="text-sm text-gray-500 dark:text-gray-400">Taxa de Conversão</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{conversionRate}%</p>
+                <p className="text-base sm:text-2xl font-bold text-gray-900 dark:text-white mt-1 truncate">{conversionRate}%</p>
               </div>
             </div>
 
             {/* Won Value */}
-            <div className="stat-card">
+            <div className="stat-card min-w-0 overflow-hidden">
               <div className="flex items-center justify-between">
-                <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center flex-shrink-0">
                   <Trophy className="w-6 h-6 text-green-500" />
                 </div>
               </div>
-              <div className="mt-4">
+              <div className="mt-4 min-w-0">
                 <p className="text-sm text-gray-500 dark:text-gray-400">Valor Ganho</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{formatCurrency(wonValue)}</p>
+                <p className="text-base sm:text-2xl font-bold text-gray-900 dark:text-white mt-1 truncate min-w-0">{formatCurrency(wonValue)}</p>
               </div>
             </div>
 
             {/* Pipeline Value */}
-            <div className="stat-card">
+            <div className="stat-card min-w-0 overflow-hidden">
               <div className="flex items-center justify-between">
-                <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center flex-shrink-0">
                   <TrendingUp className="w-6 h-6 text-blue-500" />
                 </div>
               </div>
-              <div className="mt-4">
+              <div className="mt-4 min-w-0">
                 <p className="text-sm text-gray-500 dark:text-gray-400">Valor no Funil</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{formatCurrency(totalPipelineValue)}</p>
+                <p className="text-base sm:text-2xl font-bold text-gray-900 dark:text-white mt-1 truncate min-w-0">{formatCurrency(totalPipelineValue)}</p>
               </div>
             </div>
           </motion.div>
@@ -269,24 +269,24 @@ export default function ReportsPage() {
             transition={{ delay: 0.1 }}
             className="grid grid-cols-2 sm:grid-cols-4 gap-4"
           >
-            <div className="stat-card text-center">
-              <Trophy className="w-8 h-8 text-green-500 mx-auto" />
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">{wonCards}</p>
+            <div className="stat-card text-center min-w-0 overflow-hidden">
+              <Trophy className="w-8 h-8 text-green-500 mx-auto flex-shrink-0" />
+              <p className="text-base sm:text-2xl font-bold text-gray-900 dark:text-white mt-2 truncate min-w-0">{wonCards}</p>
               <p className="text-sm text-gray-500 dark:text-gray-400">Ganhos</p>
             </div>
-            <div className="stat-card text-center">
-              <XCircle className="w-8 h-8 text-red-500 mx-auto" />
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">{lostCards}</p>
+            <div className="stat-card text-center min-w-0 overflow-hidden">
+              <XCircle className="w-8 h-8 text-red-500 mx-auto flex-shrink-0" />
+              <p className="text-base sm:text-2xl font-bold text-gray-900 dark:text-white mt-2 truncate min-w-0">{lostCards}</p>
               <p className="text-sm text-gray-500 dark:text-gray-400">Perdidos</p>
             </div>
-            <div className="stat-card text-center">
-              <Users className="w-8 h-8 text-blue-500 mx-auto" />
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">{clients.length}</p>
+            <div className="stat-card text-center min-w-0 overflow-hidden">
+              <Users className="w-8 h-8 text-blue-500 mx-auto flex-shrink-0" />
+              <p className="text-base sm:text-2xl font-bold text-gray-900 dark:text-white mt-2 truncate min-w-0">{clients.length}</p>
               <p className="text-sm text-gray-500 dark:text-gray-400">Clientes</p>
             </div>
-            <div className="stat-card text-center">
-              <Package className="w-8 h-8 text-amber-500 mx-auto" />
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">{products.length}</p>
+            <div className="stat-card text-center min-w-0 overflow-hidden">
+              <Package className="w-8 h-8 text-amber-500 mx-auto flex-shrink-0" />
+              <p className="text-base sm:text-2xl font-bold text-gray-900 dark:text-white mt-2 truncate min-w-0">{products.length}</p>
               <p className="text-sm text-gray-500 dark:text-gray-400">Produtos</p>
             </div>
           </motion.div>
@@ -378,15 +378,15 @@ export default function ReportsPage() {
               </div>
 
               <div className="space-y-4">
-                <div className="p-4 rounded-lg bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20">
+                <div className="p-4 rounded-lg bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20 min-w-0 overflow-hidden">
                   <p className="text-sm text-gray-500 dark:text-gray-400">Melhor mês</p>
-                  <p className="text-lg font-bold text-gray-900 dark:text-white mt-1">
+                  <p className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mt-1 truncate min-w-0">
                     {wonCards > 0 ? `${wonCards} conversões` : 'Sem dados'}
                   </p>
                 </div>
-                <div className="p-4 rounded-lg bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20">
+                <div className="p-4 rounded-lg bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20 min-w-0 overflow-hidden">
                   <p className="text-sm text-gray-500 dark:text-gray-400">Ticket médio</p>
-                  <p className="text-lg font-bold text-gray-900 dark:text-white mt-1">
+                  <p className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mt-1 truncate min-w-0">
                     {wonCards > 0 ? formatCurrency(wonValue / wonCards) : formatCurrency(0)}
                   </p>
                 </div>
@@ -465,7 +465,7 @@ export default function ReportsPage() {
                           <td className="px-6 py-4 text-right text-sm text-gray-900 dark:text-white">
                             {row.in_progress_cards}
                           </td>
-                          <td className="px-6 py-4 text-right text-sm font-medium text-gray-900 dark:text-white">
+                          <td className="px-6 py-4 text-right text-sm font-medium text-gray-900 dark:text-white truncate min-w-0 max-w-[120px] sm:max-w-none">
                             {formatCurrency(row.won_value)}
                           </td>
                           <td className="px-6 py-4 text-right text-sm text-gray-900 dark:text-white">
@@ -527,7 +527,7 @@ export default function ReportsPage() {
                       <td className="px-6 py-4 text-right text-sm text-gray-900 dark:text-white">
                         {stage.value}
                       </td>
-                      <td className="px-6 py-4 text-right text-sm text-gray-900 dark:text-white">
+                      <td className="px-6 py-4 text-right text-sm text-gray-900 dark:text-white truncate min-w-0 max-w-[120px] sm:max-w-none">
                         {formatCurrency(stage.total)}
                       </td>
                       <td className="px-6 py-4 text-right text-sm text-gray-900 dark:text-white">

@@ -118,10 +118,10 @@ export function EmailComposer({
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-4xl max-h-[90vh] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+        className="w-full max-w-4xl max-h-[90vh] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden mx-2 sm:mx-auto"
       >
         {/* Header */}
-        <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex-shrink-0 flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Novo Email
           </h2>
@@ -134,11 +134,11 @@ export function EmailComposer({
         </div>
 
         {/* Form */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3">
           {/* Account Selection */}
           {accounts.length > 1 && (
-            <div className="flex items-center gap-3">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 w-16">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 w-full sm:w-16 shrink-0">
                 De:
               </label>
               <select
@@ -156,11 +156,11 @@ export function EmailComposer({
           )}
 
           {/* To */}
-          <div className="flex items-center gap-3">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 w-16">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 w-full sm:w-16 shrink-0">
               Para:
             </label>
-            <div className="flex-1 flex items-center gap-2">
+            <div className="flex-1 flex items-center gap-2 min-w-0">
               <input
                 type="text"
                 value={to}
@@ -191,8 +191,8 @@ export function EmailComposer({
 
           {/* CC */}
           {showCc && (
-            <div className="flex items-center gap-3">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 w-16">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 w-full sm:w-16 shrink-0">
                 Cc:
               </label>
               <input
@@ -200,15 +200,15 @@ export function EmailComposer({
                 value={cc}
                 onChange={(e) => setCc(e.target.value)}
                 placeholder="email@example.com"
-                className="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           )}
 
           {/* BCC */}
           {showBcc && (
-            <div className="flex items-center gap-3">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 w-16">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 w-full sm:w-16 shrink-0">
                 Cco:
               </label>
               <input
@@ -216,14 +216,14 @@ export function EmailComposer({
                 value={bcc}
                 onChange={(e) => setBcc(e.target.value)}
                 placeholder="email@example.com"
-                className="flex-1 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           )}
 
           {/* Subject */}
-          <div className="flex items-center gap-3">
-            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 w-16">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+            <label className="text-sm font-medium text-gray-700 dark:text-gray-300 w-full sm:w-16 shrink-0">
               Assunto:
             </label>
             <input
@@ -248,7 +248,7 @@ export function EmailComposer({
         </div>
 
         {/* Footer */}
-        <div className="flex-shrink-0 flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex-shrink-0 flex items-center justify-between p-4 sm:p-6 border-t border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
             <button
               type="button"

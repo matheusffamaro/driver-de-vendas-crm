@@ -133,7 +133,7 @@ export function CategoryModal({ isOpen, onClose, category, defaultType = 'income
               <label className="block text-sm font-medium text-emerald-600 dark:text-emerald-400 mb-2">
                 Tipo
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setFormData({ ...formData, type: 'income' })}

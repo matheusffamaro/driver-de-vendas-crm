@@ -60,7 +60,7 @@ export function InviteUserModal({ isOpen, onClose, roles }: InviteUserModalProps
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -75,7 +75,7 @@ export function InviteUserModal({ isOpen, onClose, roles }: InviteUserModalProps
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-md m-4"
+            className="relative w-full max-w-md mx-auto my-4"
           >
             <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700">
               {/* Header */}

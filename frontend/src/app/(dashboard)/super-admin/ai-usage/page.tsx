@@ -181,6 +181,7 @@ export default function AIUsagePage() {
         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Uso por Empresa</h3>
         </div>
+        <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-gray-50 dark:bg-gray-900/50">
             <tr>
@@ -252,6 +253,7 @@ export default function AIUsagePage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )

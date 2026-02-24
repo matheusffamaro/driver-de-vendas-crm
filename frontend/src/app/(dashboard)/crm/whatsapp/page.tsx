@@ -86,6 +86,7 @@ export default function WhatsAppPage() {
   const queryClient = useQueryClient()
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null)
+  const [mobileView, setMobileView] = useState<'conversations' | 'chat'>('conversations')
   const [searchTerm, setSearchTerm] = useState('')
   const [showNewSessionModal, setShowNewSessionModal] = useState(false)
   const [showSettingsMenu, setShowSettingsMenu] = useState(false)
@@ -251,8 +252,16 @@ export default function WhatsAppPage() {
     if (selectedSession && selectedSession.status !== 'connected' && selectedConversation) {
       // Session disconnected, clear conversation selection
       setSelectedConversation(null)
+      setMobileView('conversations')
     }
   }, [selectedSession?.status])
+
+  // Reset mobileView when conversation is cleared
+  useEffect(() => {
+    if (!selectedConversation) {
+      setMobileView('conversations')
+    }
+  }, [selectedConversation])
 
   // Fetch quick replies for shortcuts
   const { data: quickRepliesData } = useQuery({
@@ -593,16 +602,16 @@ export default function WhatsAppPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] bg-white dark:bg-gray-900">
       {/* Session Selector (Top) */}
-      <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-              <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+              <div className="flex items-center gap-3 min-w-0">
           <div className="w-9 h-9 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
                   <Phone className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                 </div>
-          <div className="flex flex-col">
+          <div className="flex flex-col min-w-0 flex-1">
             <select
               value={selectedSessionId || ''}
               onChange={(e) => setSelectedSessionId(e.target.value || null)}
-              className="min-w-[260px] max-w-[360px] bg-gray-100 dark:bg-gray-800 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full min-w-0 sm:min-w-[260px] sm:max-w-[360px] bg-gray-100 dark:bg-gray-800 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               <option value="" disabled>
                 {sessions.length === 0 ? 'Nenhuma sessão disponível' : 'Selecione uma sessão'}
@@ -828,8 +837,7 @@ export default function WhatsAppPage() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar - Sessions & Conversations */}
-        <div className="w-[360px] border-r border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-800">
-
+        <div className={`w-full md:w-[360px] border-r border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-800 shrink-0 ${mobileView === 'chat' ? 'hidden md:flex' : ''}`}>
         {/* Search & Filters */}
         <div className="p-4">
           <div className="relative">
@@ -981,12 +989,19 @@ export default function WhatsAppPage() {
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className={`flex-1 flex flex-col min-w-0 ${mobileView === 'conversations' ? 'hidden md:flex' : ''}`}>
         {selectedConversation ? (
           <>
             {/* Chat Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b">
+              <div className="flex items-center gap-3 min-w-0">
+                <button
+                  onClick={() => setMobileView('conversations')}
+                  className="md:hidden p-2 -ml-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors shrink-0"
+                  aria-label="Voltar para conversas"
+                >
+                  <ArrowLeft className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                </button>
                 <div className="w-10 h-10 bg-gray-200 dark:bg-gray-600 rounded-full flex items-center justify-center overflow-hidden">
                   {selectedConversation.profile_picture ? (
                     <img 
@@ -1680,7 +1695,7 @@ function QRCodeModal({
         </div>
 
         <div className="p-8">
-          <div className="grid grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
             <div>
               <h2 className="text-2xl font-bold text-gray-800 mb-4">Conecte seu WhatsApp!</h2>
               <p className="text-gray-600 mb-6">
@@ -1890,7 +1905,7 @@ function QuickRepliesModal({ onClose }: { onClose: () => void }) {
           {/* Add new */}
           <div className="mb-6 p-4 bg-gray-50 rounded-lg">
             <h3 className="font-medium text-gray-700 mb-3">Nova Resposta Rápida</h3>
-            <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
               <input
                 type="text"
                 placeholder="Atalho (ex: /ola)"
@@ -2251,7 +2266,7 @@ function AddToPipelineModal({
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Etapa
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {stages.map((stage: any) => (
                   <button
                     key={stage.id}

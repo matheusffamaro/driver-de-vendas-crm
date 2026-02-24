@@ -170,12 +170,12 @@ export default function LoginPage() {
       </div>
 
       {/* Right side - Form */}
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-8 w-full min-w-0">
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
-          className="w-full max-w-md"
+          className="w-full max-w-md min-w-0"
         >
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3 mb-8 justify-center">
@@ -185,7 +185,7 @@ export default function LoginPage() {
             <span className="text-2xl font-bold text-slate-900 dark:text-white font-display">Driver</span>
           </div>
 
-          <div className="bg-white dark:bg-slate-800/50 rounded-2xl shadow-xl dark:shadow-2xl border border-slate-200 dark:border-slate-700/50 p-8">
+          <div className="bg-white dark:bg-slate-800/50 rounded-2xl shadow-xl dark:shadow-2xl border border-slate-200 dark:border-slate-700/50 p-4 sm:p-8">
             <div className="text-center mb-8">
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white font-display">Entrar</h2>
               <p className="text-slate-500 dark:text-slate-400 mt-2">
@@ -193,7 +193,7 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 w-full">
               <div>
                 <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
                   E-mail

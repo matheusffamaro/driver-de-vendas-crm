@@ -142,7 +142,7 @@ export function CustomFieldsManager({ isOpen, onClose, pipelineId, currentFields
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: "spring", duration: 0.3 }}
-              className="relative w-full max-w-4xl max-h-[85vh] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+              className="relative w-full max-w-4xl max-h-[85vh] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden mx-2 sm:mx-auto"
               onClick={(e) => e.stopPropagation()}
             >
             {/* Header */}
@@ -263,7 +263,7 @@ export function CustomFieldsManager({ isOpen, onClose, pipelineId, currentFields
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Tipo de Campo <span className="text-red-500">*</span>
                       </label>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                         {FIELD_TYPES.map((type) => {
                           const Icon = type.icon
                           const isSelected = editingField.type === type.value

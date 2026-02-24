@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { compileBodyToHtml, getDefaultBody, stripScriptsFromHtml } from '@/lib/email-template-builder'
 import type { EmailTemplateBodyJson, EmailTemplateBlock } from '@/lib/api'
 import { BlockPalette } from './BlockPalette'
 import { BlockEditor } from './BlockEditor'
 import { ConfigPanel } from './ConfigPanel'
+import { PanelRightOpen, PanelRightClose } from 'lucide-react'
 
 type TabId = 'content' | 'rows' | 'config'
 
@@ -17,6 +18,15 @@ export function EmailTemplateEditor({
   onChange: (body: EmailTemplateBodyJson) => void
 }) {
   const [activeTab, setActiveTab] = useState<TabId>('content')
+  const [showSidebar, setShowSidebar] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const handler = () => setShowSidebar(mq.matches)
+    handler()
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
   const blocks = body.blocks ?? []
   const config = body.config
 
@@ -59,11 +69,23 @@ export function EmailTemplateEditor({
   ]
 
   return (
-    <div className="flex h-full gap-4">
+    <div className="flex flex-col lg:flex-row h-full gap-4">
       {/* Preview - left */}
       <div className="flex-1 min-w-0 flex flex-col rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 overflow-hidden">
-        <div className="flex-shrink-0 px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400">
-          Pré-visualização
+        <div className="flex-shrink-0 flex items-center justify-between gap-2 px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs text-gray-500 dark:text-gray-400">
+          <span>Pré-visualização</span>
+          <button
+            type="button"
+            onClick={() => setShowSidebar((s) => !s)}
+            className="lg:hidden p-2 -m-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            aria-label={showSidebar ? 'Ocultar painel' : 'Mostrar painel'}
+          >
+            {showSidebar ? (
+              <PanelRightClose className="h-4 w-4" />
+            ) : (
+              <PanelRightOpen className="h-4 w-4" />
+            )}
+          </button>
         </div>
         <div className="flex-1 min-h-0 flex flex-col overflow-auto p-4 bg-gray-200 dark:bg-gray-800">
           <div
@@ -80,8 +102,10 @@ export function EmailTemplateEditor({
         </div>
       </div>
 
-      {/* Sidebar - right */}
-      <div className="w-80 flex-shrink-0 flex flex-col rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
+      {/* Sidebar - right: collapsible on mobile, always visible on lg */}
+      <div
+        className={`${showSidebar ? 'flex' : 'hidden'} lg:flex w-full lg:w-80 flex-shrink-0 flex-col rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden`}
+      >
         <div className="flex border-b border-gray-200 dark:border-gray-700">
           {tabs.map((tab) => (
             <button

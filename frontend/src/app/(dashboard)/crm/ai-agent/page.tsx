@@ -176,7 +176,7 @@ export default function AiAgentPage() {
   const aiModel = agentData?.data?.ai_model || {}
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
+    <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg">
@@ -191,7 +191,7 @@ export default function AiAgentPage() {
 
       {/* AI Model Status Card */}
       <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border border-blue-200 p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-white rounded-lg shadow-sm">
               <Sparkles className="h-5 w-5 text-blue-500" />
@@ -244,7 +244,7 @@ export default function AiAgentPage() {
 
       {/* General Configuration */}
       <div className="bg-white rounded-xl shadow-sm border">
-        <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border-b">
           <h2 className="font-semibold text-gray-800">Configuração Geral</h2>
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-500">Ativo</span>
@@ -264,7 +264,7 @@ export default function AiAgentPage() {
         </div>
 
         <div className="p-4 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm text-gray-600 mb-1">Ativo em (Sessão WhatsApp)</label>
               <select
@@ -286,21 +286,21 @@ export default function AiAgentPage() {
                   : `${whatsappSessions.filter((s: any) => s.status === 'connected').length} sessão(ões) conectada(s)`}
               </p>
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="block text-sm text-gray-600 mb-1">Notificar escalonamento humano por email</label>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 <input
                   type="checkbox"
                   checked={formData.notify_human_escalation || false}
                   onChange={(e) => setFormData({ ...formData, notify_human_escalation: e.target.checked })}
-                  className="rounded border-gray-300 text-emerald-500 focus:ring-emerald-500"
+                  className="rounded border-gray-300 text-emerald-500 focus:ring-emerald-500 flex-shrink-0"
                 />
                 <input
                   type="email"
                   value={formData.notification_email || ''}
                   onChange={(e) => setFormData({ ...formData, notification_email: e.target.value })}
                   placeholder="email@exemplo.com"
-                  className="flex-1 px-3 py-1.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                  className="flex-1 min-w-0 px-3 py-1.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
                 />
               </div>
             </div>
@@ -312,7 +312,7 @@ export default function AiAgentPage() {
             <p className="text-xs text-gray-500 mb-3">
               Sempre que seu contato precisar de atendimento humano, o chatbot irá fazer a transferência. Em horários fora dos períodos configurados, avisaremos seu contato que o atendimento pode demorar mais.
             </p>
-            <div className="grid grid-cols-7 gap-2">
+            <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
               {DAYS.map((day) => (
                 <div key={day.key} className="text-center">
                   <div className="border rounded-lg p-3 hover:border-emerald-300 transition-colors cursor-pointer">
@@ -406,8 +406,8 @@ export default function AiAgentPage() {
 
       {/* Instructions Configuration */}
       <div className="bg-white rounded-xl shadow-sm border">
-        <div className="flex items-center justify-between p-4 border-b">
-          <div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border-b">
+          <div className="min-w-0">
             <h2 className="font-semibold text-gray-800">Configuração de Instruções</h2>
             <p className="text-sm text-gray-500">Configure como seu chatbot responde aos usuários</p>
           </div>
@@ -508,7 +508,7 @@ export default function AiAgentPage() {
         </div>
 
         <div className="p-4 space-y-4">
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="text"
               value={testMessage}

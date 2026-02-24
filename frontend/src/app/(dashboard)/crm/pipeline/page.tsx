@@ -813,7 +813,7 @@ export default function PipelinePage() {
 
       {/* List View */}
       {viewMode === 'list' && (
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto p-4 sm:p-6">
           <table className="w-full">
             <thead className="bg-gray-50 border-b">
               <tr>
@@ -905,7 +905,7 @@ export default function PipelinePage() {
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="bg-white dark:bg-gray-800 rounded-xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
+              className="bg-white dark:bg-gray-800 rounded-xl max-w-4xl w-full max-h-[80vh] overflow-hidden mx-2 sm:mx-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
@@ -1112,7 +1112,7 @@ function NewCardModal({
         initial={{ scale: 0.95, y: -20 }}
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.95, y: -20 }}
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl mx-4 my-8"
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl mx-2 sm:mx-auto my-8"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -1123,7 +1123,7 @@ function NewCardModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
           {/* General Info Section */}
           <div className="border border-gray-200 dark:border-gray-700 rounded-lg">
             <button
@@ -1149,7 +1149,7 @@ function NewCardModal({
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Status</label>
                     <select
@@ -1190,7 +1190,7 @@ function NewCardModal({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Prioridade</label>
                     <select
@@ -1243,9 +1243,10 @@ function NewCardModal({
 
             {showProducts && (
               <div className="px-4 pb-4 space-y-3">
+                <div className="overflow-x-auto">
                 {/* Products Table Header */}
                 {formData.products.length > 0 && (
-                  <div className="grid grid-cols-12 gap-2 text-xs text-gray-500 dark:text-gray-400 font-medium px-1">
+                  <div className="grid grid-cols-12 gap-2 text-xs text-gray-500 dark:text-gray-400 font-medium px-1 min-w-[480px]">
                     <div className="col-span-5">Nome</div>
                     <div className="col-span-2">Qtde.</div>
                     <div className="col-span-2">Preço</div>
@@ -1256,7 +1257,7 @@ function NewCardModal({
 
                 {/* Products List */}
                 {formData.products.map((product, index) => (
-                  <div key={index} className="grid grid-cols-12 gap-2 items-center">
+                  <div key={index} className="grid grid-cols-12 gap-2 items-center min-w-[480px]">
                     <select
                       value={product.product_id}
                       onChange={(e) => handleProductChange(index, 'product_id', e.target.value)}
@@ -1305,6 +1306,7 @@ function NewCardModal({
                     R${calculateTotal().toFixed(2)}
                   </div>
                 )}
+                </div>
 
                 {/* Add Product Button */}
                 <button
@@ -1761,7 +1763,7 @@ function CardDetailModal({
         initial={{ scale: 0.95, y: -20 }}
         animate={{ scale: 1, y: 0 }}
         exit={{ scale: 0.95, y: -20 }}
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-3xl mx-4 my-8"
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-3xl mx-2 sm:mx-auto my-8"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -1828,7 +1830,7 @@ function CardDetailModal({
 
         <div className="flex">
           {/* Main Content */}
-          <div className="flex-1 p-6">
+          <div className="flex-1 p-4 sm:p-6">
             {activeTab === 'geral' ? (
               <form onSubmit={handleSubmit}>
                 <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 space-y-4">
@@ -1853,7 +1855,7 @@ function CardDetailModal({
                     </select>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Status</label>
                       <select
@@ -2150,7 +2152,7 @@ function CardDetailModal({
                             rows={2}
                             className="w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm resize-none"
                           />
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <input
                               type="datetime-local"
                               value={newTask.scheduled_at}

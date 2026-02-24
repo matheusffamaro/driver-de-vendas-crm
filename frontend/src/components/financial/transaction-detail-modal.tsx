@@ -115,7 +115,7 @@ export function TransactionDetailModal({
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="relative w-full max-w-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl mx-4 max-h-[90vh] overflow-hidden flex flex-col"
+          className="relative w-[calc(100vw-1rem)] sm:w-auto max-w-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl mx-2 sm:mx-auto max-h-[90vh] overflow-hidden flex flex-col"
         >
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
@@ -193,6 +193,7 @@ export function TransactionDetailModal({
                       Produtos Vendidos
                     </h3>
                     <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                      <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead className="bg-gray-50 dark:bg-gray-800">
                           <tr>
@@ -224,12 +225,13 @@ export function TransactionDetailModal({
                           ))}
                         </tbody>
                       </table>
+                      </div>
                     </div>
                   </div>
                 )}
 
                 {/* Details Grid */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Date */}
                   <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
                     <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 mb-2">

@@ -82,7 +82,7 @@ export function QuoteDetailModal({ quote, onClose, onSend, onApprove, onReject }
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-3xl my-8"
+          className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-[calc(100vw-1rem)] sm:w-auto max-w-3xl mx-2 sm:mx-auto my-8"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -176,6 +176,7 @@ export function QuoteDetailModal({ quote, onClose, onSend, onApprove, onReject }
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             </div>
 

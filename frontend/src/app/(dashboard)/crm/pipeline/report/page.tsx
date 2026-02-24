@@ -89,7 +89,7 @@ export default function PipelineReportPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <Link
@@ -131,7 +131,7 @@ export default function PipelineReportPage() {
 
       {/* Funnel Chart */}
       <div className="bg-gray-900 rounded-xl p-6 mb-8">
-        <div className="grid grid-cols-6 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
           {funnelData.map((stage: any, index: number) => {
             const height = (stage.count / maxCount) * 100 || 5
             const percentage = report.metrics.total_cards > 0 
@@ -197,7 +197,7 @@ export default function PipelineReportPage() {
       </div>
 
       {/* Metrics Cards */}
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <div className="bg-white rounded-xl p-6 shadow-sm border">
           <p className="text-sm text-gray-500 mb-1">Lead time *</p>
           <p className="text-2xl font-bold text-gray-800">
@@ -222,7 +222,7 @@ export default function PipelineReportPage() {
       </div>
 
       {/* Additional Stats */}
-      <div className="grid grid-cols-4 gap-4 mt-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
         <div className="bg-gray-50 rounded-lg p-4">
           <p className="text-sm text-gray-500">Total de cards</p>
           <p className="text-xl font-semibold text-gray-800">{report.metrics.total_cards}</p>

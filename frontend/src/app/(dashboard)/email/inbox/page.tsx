@@ -16,6 +16,8 @@ import {
   MoreVertical,
   Paperclip,
   Clock,
+  ArrowLeft,
+  Menu,
 } from 'lucide-react'
 import { emailApi } from '@/lib/api'
 import { useAuthStore } from '@/stores/auth-store'
@@ -34,6 +36,7 @@ export default function EmailInboxPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null)
   const [showComposer, setShowComposer] = useState(false)
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false)
 
   // Fetch threads
   const { data: threadsData, isLoading } = useQuery({
@@ -142,27 +145,34 @@ export default function EmailInboxPage() {
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <Mail className="w-7 h-7 text-blue-500" />
-            Sales Inbox
-          </h1>
+      <div className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              onClick={() => setShowMobileSidebar(!showMobileSidebar)}
+              className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex-shrink-0"
+            >
+              <Menu className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            </button>
+            <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2 truncate">
+              <Mail className="w-5 h-5 sm:w-7 sm:h-7 text-blue-500 flex-shrink-0" />
+              <span className="hidden sm:inline">Sales Inbox</span>
+              <span className="sm:hidden">Inbox</span>
+            </h1>
+          </div>
           
-          <div className="flex items-center gap-2">
-            {/* Search */}
-            <div className="relative">
+          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+            <div className="relative hidden sm:block">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Buscar emails..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 w-64 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="pl-10 pr-4 py-2 w-48 lg:w-64 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
-            {/* Sync: fetch new emails from provider, then refresh list */}
             <button
               onClick={() => syncAllMutation.mutate()}
               disabled={syncAllMutation.isPending}
@@ -172,27 +182,44 @@ export default function EmailInboxPage() {
               <RefreshCw className={cn('w-5 h-5 text-gray-600 dark:text-gray-400', syncAllMutation.isPending && 'animate-spin')} />
             </button>
 
-            {/* New Email */}
             <button
               onClick={() => setShowComposer(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors font-medium"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors font-medium text-sm sm:text-base"
             >
               <Plus className="w-5 h-5" />
-              Novo Email
+              <span className="hidden sm:inline">Novo Email</span>
             </button>
           </div>
+        </div>
+        {/* Mobile search */}
+        <div className="sm:hidden mt-2 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Buscar emails..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 pr-4 py-2 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Mobile sidebar overlay */}
+        {showMobileSidebar && (
+          <div className="md:hidden fixed inset-0 z-30 bg-black/50" onClick={() => setShowMobileSidebar(false)} />
+        )}
         {/* Sidebar */}
-        <div className="w-64 flex-shrink-0 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 overflow-y-auto">
+        <div className={cn(
+          "fixed md:relative z-40 md:z-auto inset-y-0 left-0 md:inset-auto w-64 flex-shrink-0 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 overflow-y-auto transition-transform md:translate-x-0",
+          showMobileSidebar ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        )}>
           <div className="space-y-1">
             {filters.map((filter) => (
               <button
                 key={filter.id}
-                onClick={() => setActiveFilter(filter.id as Filter)}
+                onClick={() => { setActiveFilter(filter.id as Filter); setShowMobileSidebar(false) }}
                 className={cn(
                   "w-full flex items-center justify-between px-4 py-3 rounded-lg transition-colors text-left",
                   activeFilter === filter.id
@@ -220,7 +247,10 @@ export default function EmailInboxPage() {
         </div>
 
         {/* Thread List */}
-        <div className="w-96 flex-shrink-0 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
+        <div className={cn(
+          "w-full md:w-96 flex-shrink-0 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto",
+          selectedThreadId && 'hidden md:block'
+        )}>
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
               <RefreshCw className="w-8 h-8 text-gray-400 animate-spin" />
@@ -304,7 +334,18 @@ export default function EmailInboxPage() {
         </div>
 
         {/* Thread Detail */}
-        <div className="flex-1 bg-gray-50 dark:bg-gray-900 overflow-y-auto">
+        <div className={cn(
+          "flex-1 bg-gray-50 dark:bg-gray-900 overflow-y-auto",
+          !selectedThreadId && 'hidden md:flex md:flex-col'
+        )}>
+          {selectedThread ? (
+            <div className="md:hidden flex items-center gap-2 p-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+              <button onClick={() => setSelectedThreadId(null)} className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+                <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              </button>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">{selectedThread.subject}</span>
+            </div>
+          ) : null}
           {selectedThread ? (
             <EmailThreadDetail
               thread={selectedThread}

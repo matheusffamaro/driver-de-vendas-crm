@@ -189,6 +189,7 @@ export default function AuditLogsPage() {
 
       {/* Logs List */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="overflow-x-auto">
         <div className="divide-y divide-gray-200 dark:divide-gray-700">
           {isLoading ? (
             <div className="px-6 py-12 text-center text-gray-500">
@@ -248,6 +249,7 @@ export default function AuditLogsPage() {
               )
             })
           )}
+        </div>
         </div>
 
         {/* Pagination */}

@@ -104,6 +104,7 @@ export default function TenantsPage() {
 
       {/* Table */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-gray-50 dark:bg-gray-900/50">
             <tr>
@@ -247,6 +248,7 @@ export default function TenantsPage() {
             )}
           </tbody>
         </table>
+        </div>
 
         {/* Pagination */}
         {meta.last_page > 1 && (

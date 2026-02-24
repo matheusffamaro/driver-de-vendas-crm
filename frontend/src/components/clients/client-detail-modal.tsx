@@ -157,7 +157,7 @@ export function ClientDetailModal({ isOpen, onClose, clientId, onEdit, onViewTra
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
-          className="relative w-full max-w-4xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl mx-4 max-h-[90vh] overflow-hidden flex flex-col"
+          className="relative w-[calc(100vw-1rem)] sm:w-auto max-w-4xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl mx-2 sm:mx-auto max-h-[90vh] overflow-hidden flex flex-col"
         >
           {isLoading ? (
             <div className="flex items-center justify-center h-96">
@@ -373,6 +373,7 @@ export function ClientDetailModal({ isOpen, onClose, clientId, onEdit, onViewTra
 
                     {client.recent_transactions && client.recent_transactions.length > 0 ? (
                       <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                        <div className="overflow-x-auto">
                         <table className="w-full">
                           <thead className="bg-gray-50 dark:bg-gray-800">
                             <tr>
@@ -447,6 +448,7 @@ export function ClientDetailModal({ isOpen, onClose, clientId, onEdit, onViewTra
                             })}
                           </tbody>
                         </table>
+                        </div>
                       </div>
                     ) : (
                       <div className="text-center py-12 text-gray-500 dark:text-gray-400">
@@ -488,6 +490,7 @@ export function ClientDetailModal({ isOpen, onClose, clientId, onEdit, onViewTra
 
                     {client.quotes && client.quotes.length > 0 ? (
                       <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                        <div className="overflow-x-auto">
                         <table className="w-full">
                           <thead className="bg-gray-50 dark:bg-gray-800">
                             <tr>
@@ -546,6 +549,7 @@ export function ClientDetailModal({ isOpen, onClose, clientId, onEdit, onViewTra
                             })}
                           </tbody>
                         </table>
+                        </div>
                       </div>
                     ) : (
                       <div className="text-center py-12 text-gray-500 dark:text-gray-400">
@@ -564,6 +568,7 @@ export function ClientDetailModal({ isOpen, onClose, clientId, onEdit, onViewTra
 
                     {client.products_bought && client.products_bought.length > 0 ? (
                       <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                        <div className="overflow-x-auto">
                         <table className="w-full">
                           <thead className="bg-gray-50 dark:bg-gray-800">
                             <tr>
@@ -602,6 +607,7 @@ export function ClientDetailModal({ isOpen, onClose, clientId, onEdit, onViewTra
                             ))}
                           </tbody>
                         </table>
+                        </div>
                       </div>
                     ) : (
                       <div className="text-center py-12 text-gray-500 dark:text-gray-400">
