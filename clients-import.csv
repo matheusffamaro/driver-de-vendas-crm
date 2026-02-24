@@ -1,0 +1,21 @@
+name,email,phone,document,type,company_name,status,notes
+Ana Souza,ana.souza@exemplo.com,(11) 98811-1001,123.456.789-01,individual,,active,Cliente PF
+Bruno Lima,bruno.lima@exemplo.com,(11) 98811-1002,234.567.890-12,individual,,active,Lead PF
+Carla Mendes,carla.mendes@exemplo.com,(11) 98811-1003,345.678.901-23,individual,,active,Contato PF
+Diego Alves,diego.alves@exemplo.com,(11) 98811-1004,456.789.012-34,individual,,inactive,Inativo PF
+Eduarda Costa,eduarda.costa@exemplo.com,(11) 98811-1005,567.890.123-45,individual,,active,Cliente PF
+Felipe Rocha,felipe.rocha@exemplo.com,(11) 98811-1006,678.901.234-56,individual,,active,Lead PF
+Giovana Nunes,giovana.nunes@exemplo.com,(11) 98811-1007,789.012.345-67,individual,,active,Contato PF
+Henrique Dias,henrique.dias@exemplo.com,(11) 98811-1008,890.123.456-78,individual,,active,Cliente PF
+Isabela Freitas,isabela.freitas@exemplo.com,(11) 98811-1009,901.234.567-89,individual,,inactive,Inativo PF
+Joao Pereira,joao.pereira@exemplo.com,(11) 98811-1010,012.345.678-90,individual,,active,Lead PF
+Alpha Tecnologia LTDA,contato@alphatec.com,(11) 97711-2001,12.345.678/0001-90,company,Alpha Tecnologia LTDA,active,Cliente PJ
+Beta Logistica SA,contato@betalogi.com,(11) 97711-2002,23.456.789/0001-01,company,Beta Logistica SA,active,Lead PJ
+Gamma Consultoria ME,contato@gammaconsult.com,(11) 97711-2003,34.567.890/0001-12,company,Gamma Consultoria ME,active,Contato PJ
+Delta Marketing LTDA,contato@deltamarketing.com,(11) 97711-2004,45.678.901/0001-23,company,Delta Marketing LTDA,inactive,Inativo PJ
+Epsilon Servicos LTDA,contato@epsilonservicos.com,(11) 97711-2005,56.789.012/0001-34,company,Epsilon Servicos LTDA,active,Cliente PJ
+Fenix Industria SA,contato@fenixind.com,(11) 97711-2006,67.890.123/0001-45,company,Fenix Industria SA,active,Lead PJ
+Helios Comercio LTDA,contato@helioscomercio.com,(11) 97711-2007,78.901.234/0001-56,company,Helios Comercio LTDA,active,Contato PJ
+Iris Engenharia LTDA,contato@irisengenharia.com,(11) 97711-2008,89.012.345/0001-67,company,Iris Engenharia LTDA,active,Cliente PJ
+Jupiter Financeiro SA,contato@jupiterfin.com,(11) 97711-2009,90.123.456/0001-78,company,Jupiter Financeiro SA,inactive,Inativo PJ
+Kappa Alimentos LTDA,contato@kappaalimentos.com,(11) 97711-2010,10.234.567/0001-89,company,Kappa Alimentos LTDA,active,Lead PJ

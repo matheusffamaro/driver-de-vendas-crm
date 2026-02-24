@@ -1,0 +1,73 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Production
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script_stop: true
+          script: |
+            set -e
+            
+            PROJECT_DIR="/opt/driver-crm"
+            DOCKER_DIR="${PROJECT_DIR}/docker"
+            ENV_FILE="${DOCKER_DIR}/.env.prod"
+            
+            echo "══════ Pull latest code ══════"
+            cd "${PROJECT_DIR}"
+            git fetch origin main
+            git reset --hard origin/main
+            
+            echo "══════ Rebuild & restart containers ══════"
+            cd "${DOCKER_DIR}"
+            docker compose -f docker-compose.prod.yml --env-file "${ENV_FILE}" pull 2>/dev/null || true
+            docker compose -f docker-compose.prod.yml --env-file "${ENV_FILE}" up -d --build --remove-orphans
+            
+            echo "══════ Wait for services ══════"
+            sleep 10
+            
+            echo "══════ Run migrations ══════"
+            docker exec dv-api php artisan migrate --force
+            
+            echo "══════ Clear & rebuild caches ══════"
+            docker exec dv-api php artisan config:cache
+            docker exec dv-api php artisan route:cache
+            docker exec dv-api php artisan view:cache
+            
+            echo "══════ Health check ══════"
+            for i in $(seq 1 10); do
+              HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000 || echo "000")
+              if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "302" ]; then
+                echo "Frontend OK (HTTP ${HTTP_CODE})"
+                break
+              fi
+              echo "Waiting for frontend... (attempt ${i}/10, HTTP ${HTTP_CODE})"
+              sleep 5
+            done
+            
+            API_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/api/plans || echo "000")
+            echo "API status: HTTP ${API_CODE}"
+            
+            echo "══════ Container status ══════"
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+            
+            echo "══════ Deploy complete ══════"

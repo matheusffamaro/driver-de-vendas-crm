@@ -1,0 +1,160 @@
+# Driver de Vendas CRM - Docker Compose
+# Sistema independente de CRM com integração WhatsApp
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: dv-postgres
+    environment:
+      POSTGRES_DB: crm_whitelabel
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - dv_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - dv-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis - Cache, Filas e Sessões
+  redis:
+    image: redis:7-alpine
+    container_name: dv-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - dv_redis_data:/data
+    ports:
+      - "6380:6379"
+    networks:
+      - dv-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Mailpit - Email Server for Development
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: dv-mailpit
+    ports:
+      - "8026:8025"  # Web UI
+      - "1026:1025"  # SMTP
+    networks:
+      - dv-network
+
+  # Laravel API
+  api:
+    build:
+      context: ../backend
+      dockerfile: ../docker/Dockerfile.api
+    container_name: dv-api
+    volumes:
+      - ../backend:/var/www/html
+      - dv_api_vendor:/var/www/html/vendor
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../backend/.env
+      - ../backend/.env.docker
+    environment:
+      - APP_NAME=Driver de Vendas CRM
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - APP_KEY=base64:driverdevendas2026secretkey12345678901234=
+      - APP_URL=http://localhost:8000
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=crm_whitelabel
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - JWT_SECRET=driver-vendas-jwt-secret-key-12345
+      - WHATSAPP_SERVICE_URL=http://whatsapp:3001
+      - WHATSAPP_WEBHOOK_URL=http://api:8000/api/whatsapp/webhook
+      # AI Configuration
+      - AI_PROVIDER=groq
+      - GROQ_MODEL=llama-3.3-70b-versatile
+      - GEMINI_MODEL=gemini-2.0-flash
+      # Email Configuration
+      - MAIL_MAILER=smtp
+      - MAIL_HOST=mailpit
+      - MAIL_PORT=1025
+      - MAIL_USERNAME=null
+      - MAIL_PASSWORD=null
+      - MAIL_ENCRYPTION=null
+      - MAIL_FROM_ADDRESS=noreply@driverdevendas.com
+      - MAIL_FROM_NAME="Driver de Vendas CRM"
+      - FRONTEND_URL=http://localhost:3100
+      # Redis Configuration
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=null
+      - CACHE_DRIVER=redis
+      - SESSION_DRIVER=redis
+      - QUEUE_CONNECTION=redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    networks:
+      - dv-network
+
+  # Next.js Frontend
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    container_name: dv-frontend
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - "3100:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api
+      - NODE_ENV=development
+    depends_on:
+      - api
+    networks:
+      - dv-network
+
+  # WhatsApp Service
+  whatsapp:
+    build:
+      context: ../whatsapp-service
+      dockerfile: ../docker/Dockerfile.whatsapp
+    container_name: dv-whatsapp
+    volumes:
+      - ../whatsapp-service:/app
+      - /app/node_modules
+      - dv_whatsapp_sessions:/app/sessions
+    ports:
+      - "3002:3001"
+    environment:
+      - PORT=3001
+      - WEBHOOK_URL=http://api:8000/api/whatsapp/webhook
+    depends_on:
+      - api
+    networks:
+      - dv-network
+
+volumes:
+  dv_postgres_data:
+  dv_redis_data:
+  dv_whatsapp_sessions:
+  dv_api_vendor:
+
+networks:
+  dv-network:
+    driver: bridge

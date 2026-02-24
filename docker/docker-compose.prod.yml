@@ -1,0 +1,144 @@
+# Driver de Vendas CRM - Docker Compose PRODUÇÃO
+# Uso: docker compose -f docker-compose.prod.yml up -d --build
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: dv-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-crm_whitelabel}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD no .env.prod}
+    volumes:
+      - dv_postgres_data:/var/lib/postgresql/data
+    networks:
+      - dv-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: dv-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme}
+    volumes:
+      - dv_redis_data:/data
+    networks:
+      - dv-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-changeme}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ../backend
+      dockerfile: ../docker/Dockerfile.api
+    container_name: dv-api
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      - APP_NAME=Driver de Vendas CRM
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_KEY=${APP_KEY:?Defina APP_KEY no .env.prod}
+      - APP_URL=${APP_URL:?Defina APP_URL no .env.prod}
+      - FRONTEND_URL=${FRONTEND_URL:?Defina FRONTEND_URL no .env.prod}
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=${DB_DATABASE:-crm_whitelabel}
+      - DB_USERNAME=${DB_USERNAME:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET:?Defina JWT_SECRET no .env.prod}
+      - JWT_TTL=1440
+      - JWT_REFRESH_TTL=20160
+      - JWT_ALGO=HS256
+      - WHATSAPP_SERVICE_URL=http://whatsapp:3001
+      - WHATSAPP_WEBHOOK_URL=http://api:8000/api/whatsapp/webhook
+      - AI_PROVIDER=${AI_PROVIDER:-groq}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - GROQ_MODEL=${GROQ_MODEL:-llama-3.3-70b-versatile}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.0-flash}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GOOGLE_REDIRECT_URI=${APP_URL}/api/email/accounts/oauth/gmail/callback
+      - MICROSOFT_CLIENT_ID=${MICROSOFT_CLIENT_ID:-}
+      - MICROSOFT_CLIENT_SECRET=${MICROSOFT_CLIENT_SECRET:-}
+      - MICROSOFT_REDIRECT_URI=${APP_URL}/api/email/accounts/oauth/outlook/callback
+      - MAIL_MAILER=${MAIL_MAILER:-smtp}
+      - MAIL_HOST=${MAIL_HOST:-smtp.gmail.com}
+      - MAIL_PORT=${MAIL_PORT:-587}
+      - MAIL_USERNAME=${MAIL_USERNAME:-}
+      - MAIL_PASSWORD=${MAIL_PASSWORD:-}
+      - MAIL_ENCRYPTION=${MAIL_ENCRYPTION:-tls}
+      - MAIL_FROM_ADDRESS=${MAIL_FROM_ADDRESS:-noreply@driverdevendas.com}
+      - MAIL_FROM_NAME=Driver de Vendas CRM
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-changeme}
+      - CACHE_DRIVER=redis
+      - SESSION_DRIVER=redis
+      - QUEUE_CONNECTION=redis
+      - PAYPAL_MODE=${PAYPAL_MODE:-live}
+      - PAYPAL_CLIENT_ID=${PAYPAL_CLIENT_ID:-}
+      - PAYPAL_CLIENT_SECRET=${PAYPAL_CLIENT_SECRET:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - dv-network
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/Dockerfile.frontend.prod
+      args:
+        NEXT_PUBLIC_API_URL: ${APP_URL}/api
+    container_name: dv-frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${APP_URL}/api
+    depends_on:
+      - api
+    networks:
+      - dv-network
+
+  whatsapp:
+    build:
+      context: ../whatsapp-service
+      dockerfile: ../docker/Dockerfile.whatsapp
+    container_name: dv-whatsapp
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3002:3001"
+    volumes:
+      - dv_whatsapp_sessions:/app/sessions
+    environment:
+      - PORT=3001
+      - WEBHOOK_URL=http://api:8000/api/whatsapp/webhook
+    depends_on:
+      - api
+    networks:
+      - dv-network
+
+volumes:
+  dv_postgres_data:
+  dv_redis_data:
+  dv_whatsapp_sessions:
+
+networks:
+  dv-network:
+    driver: bridge

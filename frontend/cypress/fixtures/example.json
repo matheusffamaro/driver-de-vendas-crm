@@ -1,0 +1,22 @@
+{
+  "testUser": {
+    "name": "Usuário Teste",
+    "email": "test@cypress.com",
+    "password": "senha12345"
+  },
+  "testTenant": {
+    "name": "Empresa Cypress"
+  },
+  "testClient": {
+    "name": "Cliente Fixture",
+    "email": "fixture@cypress.com",
+    "phone": "11999000001",
+    "type": "individual"
+  },
+  "testProduct": {
+    "name": "Produto Fixture",
+    "price": 199.90,
+    "type": "product",
+    "sku": "FIX-001"
+  }
+}

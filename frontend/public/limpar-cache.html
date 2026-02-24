@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limpar Cache - Driver de Vendas CRM</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        h1 {
+            color: #1F2937;
+            font-size: 28px;
+            margin-bottom: 16px;
+            font-weight: 700;
+        }
+
+        p {
+            color: #6B7280;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        .status {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            font-weight: 500;
+        }
+
+        .status.pending {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        .status.success {
+            background: #D1FAE5;
+            color: #065F46;
+        }
+
+        button {
+            background: #10B981;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 14px 28px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        button:hover {
+            background: #059669;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #9CA3AF;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .steps {
+            text-align: left;
+            background: #F9FAFB;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 24px;
+        }
+
+        .steps h3 {
+            color: #1F2937;
+            margin-bottom: 12px;
+            font-size: 16px;
+        }
+
+        .steps ol {
+            margin-left: 20px;
+            color: #4B5563;
+        }
+
+        .steps li {
+            margin-bottom: 8px;
+        }
+
+        .login-link {
+            display: inline-block;
+            margin-top: 16px;
+            padding: 12px 24px;
+            background: #10B981;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .login-link:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon" id="icon">🧹</div>
+        <h1>Limpar Cache do Sistema</h1>
+        <p id="description">
+            Este utilitário irá limpar todos os dados salvos no navegador (cache, permissões antigas e configurações).
+        </p>
+
+        <div class="status pending" id="status">
+            ⏳ Aguardando ação
+        </div>
+
+        <button id="clearBtn" onclick="clearCache()">
+            Limpar Cache e Dados
+        </button>
+
+        <div class="steps">
+            <h3>📋 O que será limpo:</h3>
+            <ol>
+                <li>Tokens de autenticação antigos</li>
+                <li>Permissões em cache</li>
+                <li>Configurações de tema</li>
+                <li>Dados de sessão</li>
+            </ol>
+        </div>
+
+        <div id="successMessage" style="display: none;">
+            <p style="margin-top: 24px; color: #059669; font-weight: 600;">
+                ✅ Cache limpo com sucesso!
+            </p>
+            <a href="/auth/login" class="login-link">
+                Ir para o Login
+            </a>
+        </div>
+    </div>
+
+    <script>
+        function clearCache() {
+            const btn = document.getElementById('clearBtn');
+            const status = document.getElementById('status');
+            const icon = document.getElementById('icon');
+            const description = document.getElementById('description');
+            const successMessage = document.getElementById('successMessage');
+            
+            btn.disabled = true;
+            status.textContent = '🔄 Limpando...';
+            
+            setTimeout(() => {
+                // Limpar localStorage
+                localStorage.clear();
+                
+                // Limpar sessionStorage
+                sessionStorage.clear();
+                
+                // Limpar cookies (se houver)
+                document.cookie.split(";").forEach(function(c) { 
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+                });
+                
+                // Atualizar interface
+                icon.textContent = '✅';
+                status.className = 'status success';
+                status.textContent = '✨ Cache limpo com sucesso!';
+                description.textContent = 'Todos os dados antigos foram removidos. Você pode fazer login novamente.';
+                btn.style.display = 'none';
+                successMessage.style.display = 'block';
+                
+                // Auto-redirect após 3 segundos
+                setTimeout(() => {
+                    window.location.href = '/auth/login';
+                }, 3000);
+            }, 1000);
+        }
+
+        // Detectar se veio de uma URL específica
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('auto') === 'true') {
+            // Auto-executar se tiver o parâmetro ?auto=true
+            setTimeout(clearCache, 1000);
+        }
+    </script>
+</body>
+</html>
