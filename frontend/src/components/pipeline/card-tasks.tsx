@@ -303,7 +303,7 @@ export function CardTasks({
                 <button
                   onClick={() => {
                     setShowFullForm(false)
-                    setNewTask({ title: '', description: '', scheduled_at: '' })
+                    setNewTask({ title: '', description: '', scheduled_at: '', assigned_to: '' })
                   }}
                   className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800 rounded-lg transition-colors"
                 >
