@@ -1,40 +1,32 @@
-# Documentação - Driver de Vendas CRM
+# Documentacao — Driver de Vendas CRM
 
-Índice de toda a documentação técnica e de negócios do projeto.
+Indice de toda a documentacao tecnica e comercial do projeto.
 
 ---
 
-## Arquitetura e Referência Técnica
+## Referencia Tecnica
 
-| Documento | Descrição |
+| Documento | Descricao |
 |-----------|-----------|
-| [modulos-e-funcoes.md](./modulos-e-funcoes.md) | Módulos, controllers, services, models, permissões e rotas públicas |
-| [whatsapp-arquitetura.md](./whatsapp-arquitetura.md) | Refatoração Clean Architecture do módulo WhatsApp (services, actions, DTOs, policies) |
+| [arquitetura-e-modulos.md](./arquitetura-e-modulos.md) | Modulos, controllers, services, models, permissoes e rotas publicas |
+| [guia-performance.md](./guia-performance.md) | Otimizacoes de backend (indices, eager loading) e frontend (React hooks, memoizacao) |
+| [guia-seguranca.md](./guia-seguranca.md) | JWT secret, rotacao de chaves, boas praticas |
 
-## Performance e Segurança
+## Guias de Configuracao
 
-| Documento | Descrição |
+| Documento | Descricao |
 |-----------|-----------|
-| [performance-backend.md](./performance-backend.md) | Índices compostos, eager loading, N+1 prevention e checklist |
-| [performance-frontend.md](./performance-frontend.md) | React.memo, useMemo, useCallback, virtualização de listas e hooks otimizados |
-| [seguranca-jwt.md](./seguranca-jwt.md) | Geração de JWT secret forte, rotação, boas práticas e checklist de deploy |
+| [guia-email-oauth.md](./guia-email-oauth.md) | Configuracao OAuth2 para Gmail e Outlook (Google Cloud + Azure) |
+| [guia-email-marketing.md](./guia-email-marketing.md) | Migrations e setup do modulo de campanhas de e-mail |
 
-## Guias de Configuração
+## Comercial
 
-| Documento | Descrição |
+| Documento | Descricao |
 |-----------|-----------|
-| [oauth-email-setup.md](./oauth-email-setup.md) | Configuração OAuth2 para Gmail e Outlook (Google Cloud + Azure) |
-| [migracao-email-marketing.md](./migracao-email-marketing.md) | Troubleshooting de migrations do módulo de campanhas de email |
+| [planos-e-precos.md](./planos-e-precos.md) | Funcionalidades por plano, limites, frases de impacto e checklist para pagina de precos |
 
-## Negócios e Planos
+## Historico
 
-| Documento | Descrição |
+| Documento | Descricao |
 |-----------|-----------|
-| [planos-e-precos.md](./planos-e-precos.md) | Funcionalidades por plano, limites, add-ons e copy para landing page |
-
-## Histórico
-
-| Documento | Descrição |
-|-----------|-----------|
-| [historico-fase-3.md](./historico-fase-3.md) | Resumo da Fase 3: JWT, mass assignment, legacy roles, otimizações |
-| [historico-sprint-1.md](./historico-sprint-1.md) | Registro de arquivos removidos na Sprint 1 |
+| [historico-desenvolvimento.md](./historico-desenvolvimento.md) | Registro de sprints, fases e decisoes tecnicas ao longo do projeto |

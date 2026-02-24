@@ -203,10 +203,14 @@ if [[ ! -f "${NGINX_TPL}" ]]; then
     err "Template Nginx não encontrado: ${NGINX_TPL}"
 fi
 
+sed "s/__DOMAIN__/${DOMAIN}/g" "${NGINX_TPL}" > "${NGINX_CONF}"
+
 ln -sf "${NGINX_CONF}" /etc/nginx/sites-enabled/driver-crm
 rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
 
-# HTTP-only config first (SSL files don't exist yet)
+nginx -t 2>&1 || err "Configuração Nginx inválida"
+
+# Primeiro precisamos do HTTP para o certbot funcionar, então usamos config temporária
 cat > "${NGINX_CONF}" <<TMPNGINX
 server {
     listen 80;
