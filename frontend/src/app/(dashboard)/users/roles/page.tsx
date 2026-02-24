@@ -247,7 +247,7 @@ export default function RolesPage() {
       if (allChecked) {
         return prev.filter(p => !modulePerms.includes(p))
       } else {
-        return [...new Set([...prev, ...modulePerms])]
+        return Array.from(new Set([...prev, ...modulePerms]))
       }
     })
   }

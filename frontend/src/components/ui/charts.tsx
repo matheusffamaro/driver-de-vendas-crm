@@ -44,7 +44,7 @@ function GlassTooltip({
   payload,
   label,
   formatter,
-}: TooltipProps<number, string> & {
+}: Omit<TooltipProps<number, string>, 'formatter'> & {
   formatter?: (value: number, name: string, payload?: Record<string, unknown>) => ReactNode
 }) {
   if (!active || !payload?.length) return null

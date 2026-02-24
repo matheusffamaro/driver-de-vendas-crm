@@ -106,7 +106,16 @@ export function CardTasks({
 
   const handleFullCreate = () => {
     if (newTask.title.trim()) {
-      onCreate(newTask)
+      const taskData: Partial<Task> = {
+        title: newTask.title,
+        description: newTask.description || undefined,
+        scheduled_at: newTask.scheduled_at || undefined,
+      }
+      if (newTask.assigned_to) {
+        const user = users.find(u => u.id === newTask.assigned_to)
+        if (user) taskData.assigned_to = user
+      }
+      onCreate(taskData)
       setNewTask({ title: '', description: '', scheduled_at: '', assigned_to: '' })
       setShowFullForm(false)
     }
@@ -294,7 +303,7 @@ export function CardTasks({
                 <button
                   onClick={() => {
                     setShowFullForm(false)
-                    setNewTask({ title: '', description: '', scheduled_at: '', assigned_to: '' })
+                    setNewTask({ title: '', description: '', scheduled_at: '' })
                   }}
                   className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800 rounded-lg transition-colors"
                 >

@@ -35,7 +35,7 @@ interface AuthState {
   // Actions
   setAuth: (data: {
     user: User
-    tenant: Tenant
+    tenant: Tenant | null
     role: Role
     tenants: Tenant[]
     tokens: { access_token: string; refresh_token: string }
