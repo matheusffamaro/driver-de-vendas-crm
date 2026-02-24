@@ -30,7 +30,7 @@ import { ConfirmModal } from '@/components/ui/confirm-modal'
 export default function ClientsPage() {
   const queryClient = useQueryClient()
   const { canEdit } = usePermissions()
-  const canEditClients = canEdit()
+  const canEditClients = canEdit('clients')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState('')

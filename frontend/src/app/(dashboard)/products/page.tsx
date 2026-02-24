@@ -29,7 +29,7 @@ import { ConfirmModal } from '@/components/ui/confirm-modal'
 export default function ProductsPage() {
   const queryClient = useQueryClient()
   const { canEdit } = usePermissions()
-  const canEditProducts = canEdit()
+  const canEditProducts = canEdit('products')
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive' | 'low_stock'>('all')
