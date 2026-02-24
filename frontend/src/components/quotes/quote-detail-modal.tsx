@@ -176,7 +176,6 @@ export function QuoteDetailModal({ quote, onClose, onSend, onApprove, onReject }
                     ))}
                   </tbody>
                 </table>
-                </div>
               </div>
             </div>
 
