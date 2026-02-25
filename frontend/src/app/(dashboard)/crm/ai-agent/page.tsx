@@ -89,7 +89,10 @@ export default function AiAgentPage() {
   // Update form when agent data loads
   useEffect(() => {
     if (agent && Object.keys(agent).length > 0 && !isInitialized) {
-      setFormData(agent)
+      setFormData({
+        ...agent,
+        whatsapp_session_id: agent.whatsapp_session_id === null ? 'default' : agent.whatsapp_session_id,
+      })
       setIsInitialized(true)
     }
   }, [agent, isInitialized])
@@ -98,9 +101,12 @@ export default function AiAgentPage() {
   const updateMutation = useMutation({
     mutationFn: (data: any) => aiAgentApi.update(data),
     onSuccess: (response) => {
-      // Update form with saved data
       if (response?.data?.data) {
-        setFormData(response.data.data)
+        const d = response.data.data
+        setFormData({
+          ...d,
+          whatsapp_session_id: d.whatsapp_session_id === null ? 'default' : d.whatsapp_session_id,
+        })
       }
       queryClient.invalidateQueries({ queryKey: ['ai-agent'] })
       alert('Configurações salvas com sucesso!')
@@ -212,11 +218,11 @@ export default function AiAgentPage() {
             <div>
               <label className="block text-sm text-gray-600 mb-1">Ativo em (Sessão WhatsApp)</label>
               <select
-                value={formData.whatsapp_session_id || ''}
-                onChange={(e) => setFormData({ ...formData, whatsapp_session_id: e.target.value || null })}
+                value={formData.whatsapp_session_id || 'none'}
+                onChange={(e) => setFormData({ ...formData, whatsapp_session_id: e.target.value === 'none' ? 'none' : e.target.value })}
                 className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
               >
-                <option value="">Nenhuma (Desativado)</option>
+                <option value="none">Nenhuma (Desativado)</option>
                 <option value="default">Todas as sessões</option>
                 {whatsappSessions.map((session: any) => (
                   <option key={session.id} value={session.id}>

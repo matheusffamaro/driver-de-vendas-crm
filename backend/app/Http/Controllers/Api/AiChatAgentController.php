@@ -44,6 +44,7 @@ class AiChatAgentController extends Controller
                 'tenant_id' => $tenantId,
                 'name' => 'Agente de Chat',
                 'is_active' => false,
+                'whatsapp_session_id' => 'none',
                 ...$defaults,
             ]);
         }
@@ -95,8 +96,11 @@ class AiChatAgentController extends Controller
         ]);
 
         $data = $request->all();
-        // Normalize "default" (frontend legacy value) to NULL = all sessions
-        if (($data['whatsapp_session_id'] ?? null) === 'default') {
+
+        $sessionValue = $data['whatsapp_session_id'] ?? null;
+        if ($sessionValue === '' || $sessionValue === 'none') {
+            $data['whatsapp_session_id'] = 'none';
+        } elseif ($sessionValue === 'default') {
             $data['whatsapp_session_id'] = null;
         }
 

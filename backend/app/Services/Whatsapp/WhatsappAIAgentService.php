@@ -204,26 +204,16 @@ class WhatsappAIAgentService
     {
         $tenantId = $session->tenant_id;
 
-        $aiAgent = AiChatAgent::withoutGlobalScopes()
+        return AiChatAgent::withoutGlobalScopes()
             ->with('documents')
             ->where('tenant_id', $tenantId)
             ->where('is_active', true)
+            ->where('whatsapp_session_id', '!=', 'none')
             ->where(function ($q) use ($session) {
                 $q->where('whatsapp_session_id', $session->id)
-                    ->orWhereNull('whatsapp_session_id')
-                    ->orWhere('whatsapp_session_id', 'default');
+                    ->orWhereNull('whatsapp_session_id');
             })
             ->first();
-
-        if (!$aiAgent) {
-            $aiAgent = AiChatAgent::withoutGlobalScopes()
-                ->with('documents')
-                ->where('tenant_id', $tenantId)
-                ->where('is_active', true)
-                ->first();
-        }
-
-        return $aiAgent;
     }
 
     /**
