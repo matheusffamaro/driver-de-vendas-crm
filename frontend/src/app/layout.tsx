@@ -1,18 +1,20 @@
 import type { Metadata } from 'next'
-import { Outfit, JetBrains_Mono } from 'next/font/google'
+import localFont from 'next/font/local'
 import './globals.css'
 import { Providers } from '@/components/providers'
 
-const outfit = Outfit({
-  subsets: ['latin'],
+const outfit = localFont({
+  src: '../../public/fonts/outfit-latin.woff2',
   variable: '--font-outfit',
   display: 'swap',
+  weight: '100 900',
 })
 
-const jetbrains = JetBrains_Mono({
-  subsets: ['latin'],
+const jetbrains = localFont({
+  src: '../../public/fonts/jetbrains-mono-latin.woff2',
   variable: '--font-jetbrains',
   display: 'swap',
+  weight: '100 800',
 })
 
 export const metadata: Metadata = {
