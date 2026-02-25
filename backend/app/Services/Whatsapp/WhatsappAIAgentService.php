@@ -35,10 +35,21 @@ class WhatsappAIAgentService
         }
 
         try {
+            // Fresh read from DB to catch any concurrent sendMessage updates
+            $conversation->refresh();
+
             if ($conversation->assigned_user_id !== null) {
                 Log::info('AI Agent: Human takeover detected, skipping response', [
                     'conversationId' => $conversation->id,
                     'assignedUserId' => $conversation->assigned_user_id,
+                ]);
+                return;
+            }
+
+            // Also check if a human sent a recent outgoing message on this conversation
+            if ($this->hasRecentHumanMessage($conversation)) {
+                Log::info('AI Agent: Recent human message detected, skipping response', [
+                    'conversationId' => $conversation->id,
                 ]);
                 return;
             }
@@ -61,16 +72,13 @@ class WhatsappAIAgentService
                 return;
             }
 
-            // Validate message
             if (empty(trim($messageText))) {
                 Log::debug('AI Agent: Empty message, skipping');
                 return;
             }
 
-            // Combine recent messages if multiple
             $messageText = $this->combineRecentMessages($conversation, $messageText);
 
-            // Set rate limit locks
             $this->setRateLimitLocks($session, $conversation);
 
             Log::info('AI Agent processing message', [
@@ -81,14 +89,22 @@ class WhatsappAIAgentService
                 'messageLength' => strlen($messageText),
             ]);
 
-            // Generate AI response
             $aiResponse = $this->generateAIResponse($session, $aiAgent, $messageText, $conversation);
 
             if (!$aiResponse) {
                 return;
             }
 
-            // Send response via WhatsApp
+            // Re-check human takeover AFTER generating response (may have taken seconds)
+            $conversation->refresh();
+            if ($conversation->assigned_user_id !== null) {
+                Log::info('AI Agent: Human takeover detected after generation, discarding response', [
+                    'conversationId' => $conversation->id,
+                    'assignedUserId' => $conversation->assigned_user_id,
+                ]);
+                return;
+            }
+
             $this->sendAIResponse($session, $conversation, $aiResponse, $aiAgent, $messageText);
 
         } catch (\Exception $e) {
@@ -242,6 +258,23 @@ class WhatsappAIAgentService
         }
 
         return $currentMessage;
+    }
+
+    /**
+     * Check if a human (not AI) sent a recent outgoing message in this conversation.
+     * This is a safety net for human takeover detection even when assigned_user_id
+     * is not yet set (e.g. race condition, global session edge case).
+     */
+    private function hasRecentHumanMessage(WhatsappConversation $conversation): bool
+    {
+        return WhatsappMessage::where('conversation_id', $conversation->id)
+            ->where('direction', 'outgoing')
+            ->where('created_at', '>=', now()->subMinutes(30))
+            ->where(function ($q) {
+                $q->whereNull('sender_name')
+                    ->orWhere('sender_name', '!=', 'AI Agent');
+            })
+            ->exists();
     }
 
     /**
