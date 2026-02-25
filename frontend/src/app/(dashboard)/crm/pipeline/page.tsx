@@ -1644,16 +1644,24 @@ function CardDetailModal({
     onSuccess: (response) => {
       const suggestions = response?.data?.data
       if (suggestions) {
-        // Apply suggestions to form
-        if (suggestions.title) {
-          setFormData(prev => ({ ...prev, title: suggestions.title }))
-        }
+        const updates: Record<string, string> = {}
         if (suggestions.observation) {
-          setFormData(prev => ({ ...prev, observation: suggestions.observation }))
+          updates.observation = suggestions.observation
         }
+        if (suggestions.priority) {
+          updates.priority = suggestions.priority
+        }
+        if (Object.keys(updates).length > 0) {
+          setFormData(prev => ({ ...prev, ...updates }))
+        }
+
+        const parts: string[] = []
+        if (suggestions.observation) parts.push(`📋 ${suggestions.observation}`)
+        if (suggestions.suggested_next_action) parts.push(`🎯 Próxima ação: ${suggestions.suggested_next_action}`)
+
         toast.success(
-          '✨ Sugestões aplicadas!',
-          suggestions.suggested_next_action ? `Próxima ação: ${suggestions.suggested_next_action}` : 'Campos atualizados com sucesso'
+          '✨ Análise do lead aplicada!',
+          parts.join('\n') || 'Campos atualizados com sucesso'
         )
       }
     },

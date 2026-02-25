@@ -631,18 +631,37 @@ class AIService
     }
 
     /**
-     * Auto-fill card data (OTIMIZADO)
+     * Auto-fill card data with intelligent lead analysis
      */
     public function autoFillCard(array $cardData, array $comments, array $history): array
     {
-        // OTIMIZAÇÃO: Contexto ultra-compacto
         $context = $this->buildCardContextCompact($cardData, $comments, $history);
-        
-        // OTIMIZAÇÃO: Prompt mínimo
-        $prompt = "Lead:{$context}\nJSON:{title,priority(low/medium/high),observation,suggested_next_action}";
 
-        // OTIMIZAÇÃO: System prompt mínimo, menos tokens de resposta
-        $result = $this->callGemini('autofill', $prompt, 'CRM.JSON only.', 0.3, self::MAX_JSON_RESPONSE_TOKENS);
+        $systemPrompt = <<<'SYS'
+Você é um assistente de vendas experiente em CRM. Analise os dados do lead e gere insights acionáveis.
+
+Regras para "observation":
+- NÃO repita informações já visíveis (nome, telefone, valor, estágio)
+- Escreva uma análise estratégica: perfil do lead, nível de interesse, pontos de atenção, oportunidades
+- Se houver comentários/histórico, extraia padrões e contexto relevante
+- Se houver produtos, sugira cross-sell ou ajustes na proposta
+- Seja direto e objetivo (2-4 frases)
+
+Regras para "suggested_next_action":
+- Ação específica e prática (não genérica como "fazer follow-up")
+- Inclua prazo quando possível (ex: "Ligar amanhã às 10h para...")
+- Considere o estágio atual do funil
+
+Responda APENAS com JSON válido, sem texto adicional.
+SYS;
+
+        $prompt = <<<PROMPT
+{$context}
+
+Gere JSON: {"priority":"low|medium|high","observation":"análise estratégica do lead","suggested_next_action":"ação específica"}
+PROMPT;
+
+        $result = $this->callGemini('autofill', $prompt, $systemPrompt, 0.4, 350);
 
         if (!$result['success']) {
             return $result;
@@ -826,22 +845,100 @@ class AIService
     {
         $lines = [];
 
-        if (!empty($cardData['contact']['name'])) {
-            $lines[] = "Contato: {$cardData['contact']['name']}";
+        // Contact info
+        $contact = $cardData['contact'] ?? [];
+        if (!empty($contact['name'])) {
+            $contactLine = "Contato: {$contact['name']}";
+            if (!empty($contact['type'])) $contactLine .= " ({$contact['type']})";
+            if (!empty($contact['company_name'])) $contactLine .= " - {$contact['company_name']}";
+            $lines[] = $contactLine;
+
+            if (!empty($contact['city']) || !empty($contact['state'])) {
+                $lines[] = "Local: " . trim(($contact['city'] ?? '') . '/' . ($contact['state'] ?? ''), '/');
+            }
+            if (!empty($contact['status'])) {
+                $lines[] = "Status do contato: {$contact['status']}";
+            }
+            if (!empty($contact['notes'])) {
+                $lines[] = "Notas do contato: " . $this->truncate($contact['notes'], 150);
+            }
         }
 
-        if (!empty($cardData['stage']['name'])) {
-            $lines[] = "Estágio: {$cardData['stage']['name']}";
-        }
-
+        // Card/deal info
+        $lines[] = "Estágio: " . ($cardData['stage']['name'] ?? 'N/A');
         if (!empty($cardData['value'])) {
-            $lines[] = "Valor: R$ {$cardData['value']}";
+            $lines[] = "Valor do negócio: R$ " . number_format((float)$cardData['value'], 2, ',', '.');
+        }
+        if (!empty($cardData['priority'])) {
+            $lines[] = "Prioridade atual: {$cardData['priority']}";
+        }
+        if (!empty($cardData['expected_close_date'])) {
+            $lines[] = "Previsão de fechamento: {$cardData['expected_close_date']}";
+        }
+        if (!empty($cardData['description'])) {
+            $lines[] = "Observação atual: " . $this->truncate($cardData['description'], 200);
         }
 
+        // Products on the deal
+        $products = $cardData['products'] ?? [];
+        if (!empty($products)) {
+            $productNames = [];
+            $totalProducts = 0;
+            foreach ($products as $p) {
+                $name = $p['product']['name'] ?? ($p['name'] ?? 'Produto');
+                $qty = $p['quantity'] ?? 1;
+                $price = $p['unit_price'] ?? $p['price'] ?? 0;
+                $productNames[] = "{$name} ({$qty}x R$" . number_format((float)$price, 0, ',', '.') . ")";
+                $totalProducts += ($qty * $price);
+            }
+            $lines[] = "Produtos/Serviços: " . implode(', ', $productNames);
+        }
+
+        // Tasks
+        $tasks = $cardData['tasks'] ?? [];
+        if (!empty($tasks)) {
+            $pending = array_filter($tasks, fn($t) => !($t['completed_at'] ?? null));
+            $completed = count($tasks) - count($pending);
+            $lines[] = "Tarefas: " . count($pending) . " pendente(s), {$completed} concluída(s)";
+            foreach (array_slice($pending, 0, 2) as $t) {
+                $taskLine = "- {$t['title']}";
+                if (!empty($t['scheduled_at'])) $taskLine .= " (agenda: {$t['scheduled_at']})";
+                $lines[] = $taskLine;
+            }
+        }
+
+        // Comments (most recent and relevant)
         if (!empty($comments)) {
-            $recent = array_slice($comments, 0, 3);
+            $lines[] = "--- Comentários recentes ---";
+            $recent = array_slice($comments, -5);
             foreach ($recent as $c) {
-                $lines[] = "Comentário: " . $this->truncate($c['content'] ?? '', 100);
+                $author = $c['user']['name'] ?? 'Usuário';
+                $date = isset($c['created_at']) ? substr($c['created_at'], 0, 10) : '';
+                $lines[] = "[{$author} {$date}] " . $this->truncate($c['content'] ?? '', 150);
+            }
+        }
+
+        // History (stage changes, key actions)
+        if (!empty($history)) {
+            $stageChanges = array_filter($history, fn($h) => ($h['action'] ?? '') === 'stage_changed');
+            if (!empty($stageChanges)) {
+                $recent = array_slice($stageChanges, -3);
+                $lines[] = "--- Movimentações no funil ---";
+                foreach ($recent as $h) {
+                    $from = $h['old_stage_name'] ?? $h['metadata']['from_stage'] ?? '?';
+                    $to = $h['new_stage_name'] ?? $h['metadata']['to_stage'] ?? '?';
+                    $date = isset($h['created_at']) ? substr($h['created_at'], 0, 10) : '';
+                    $lines[] = "{$date}: {$from} → {$to}";
+                }
+            }
+        }
+
+        // Card age
+        if (!empty($cardData['created_at'])) {
+            $created = strtotime($cardData['created_at']);
+            if ($created) {
+                $daysOpen = (int) ((time() - $created) / 86400);
+                $lines[] = "Dias no funil: {$daysOpen}";
             }
         }
 

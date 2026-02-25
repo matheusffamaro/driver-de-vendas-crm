@@ -1129,7 +1129,7 @@ class PipelineController extends Controller
     {
         try {
             $card = PipelineCard::where('pipeline_id', $pipelineId)
-                ->with(['stage', 'contact', 'assignedTo', 'comments.user', 'history'])
+                ->with(['stage', 'contact', 'assignedTo', 'comments.user', 'history', 'products.product', 'tasks'])
                 ->findOrFail($cardId);
 
             $tenantId = $request->user()?->tenant_id;
