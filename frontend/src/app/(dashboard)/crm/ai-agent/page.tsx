@@ -17,7 +17,6 @@ import {
   ChevronUp,
   Save,
   Info,
-  CheckCircle,
   XCircle,
   Sparkles
 } from 'lucide-react'
@@ -173,8 +172,6 @@ export default function AiAgentPage() {
     )
   }
 
-  const aiModel = agentData?.data?.ai_model || {}
-
   return (
     <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -187,59 +184,6 @@ export default function AiAgentPage() {
             <p className="text-sm text-gray-500">Configure seu assistente de IA para atendimento automático</p>
           </div>
         </div>
-      </div>
-
-      {/* AI Model Status Card */}
-      <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border border-blue-200 p-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-white rounded-lg shadow-sm">
-              <Sparkles className="h-5 w-5 text-blue-500" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                {aiModel.provider || 'Google Gemini'}
-                <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full">
-                  GRATUITO
-                </span>
-              </h3>
-              <p className="text-sm text-gray-600">
-                Modelo: <span className="font-medium">{aiModel.model || 'gemini-2.5-flash'}</span>
-                {' • '}
-                Limite: <span className="font-medium">{aiModel.rate_limit || '15 requests/minute'}</span>
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {aiModel.configured ? (
-              <span className="flex items-center gap-1 px-3 py-1 text-sm bg-green-100 text-green-700 rounded-full">
-                <CheckCircle className="h-4 w-4" />
-                Configurado
-              </span>
-            ) : (
-              <a
-                href="https://aistudio.google.com/apikey"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 px-3 py-1 text-sm bg-amber-100 text-amber-700 rounded-full hover:bg-amber-200 transition-colors"
-              >
-                <Info className="h-4 w-4" />
-                Obter API Key Grátis
-              </a>
-            )}
-          </div>
-        </div>
-        {!aiModel.configured && (
-          <div className="mt-3 p-3 bg-white/70 rounded-lg text-sm text-gray-600">
-            <p className="font-medium text-gray-800 mb-1">Como configurar:</p>
-            <ol className="list-decimal list-inside space-y-1">
-              <li>Acesse <a href="https://aistudio.google.com/apikey" target="_blank" className="text-blue-600 hover:underline">aistudio.google.com/apikey</a></li>
-              <li>Crie uma chave de API gratuita</li>
-              <li>Adicione no arquivo <code className="px-1 py-0.5 bg-gray-100 rounded text-xs">.env</code>: <code className="px-1 py-0.5 bg-gray-100 rounded text-xs">GEMINI_API_KEY=sua_chave</code></li>
-              <li>Reinicie o sistema</li>
-            </ol>
-          </div>
-        )}
       </div>
 
       {/* General Configuration */}
@@ -308,29 +252,73 @@ export default function AiAgentPage() {
 
           {/* Human Service Hours */}
           <div>
-            <label className="block text-sm text-gray-600 mb-2">Períodos para atendimento humano</label>
+            <label className="block text-sm text-gray-600 mb-2">Horários de atendimento da IA</label>
             <p className="text-xs text-gray-500 mb-3">
-              Sempre que seu contato precisar de atendimento humano, o chatbot irá fazer a transferência. Em horários fora dos períodos configurados, avisaremos seu contato que o atendimento pode demorar mais.
+              Defina os horários em que a IA responderá automaticamente. Fora desses períodos, o chatbot não enviará respostas.
+              Dias sem horário definido permitem a IA responder o dia todo.
             </p>
-            <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
-              {DAYS.map((day) => (
-                <div key={day.key} className="text-center">
-                  <div className="border rounded-lg p-3 hover:border-emerald-300 transition-colors cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.human_service_hours?.[day.key]?.enabled || false}
-                      onChange={(e) => {
-                        const hours = { ...formData.human_service_hours }
-                        hours[day.key] = { ...hours[day.key], enabled: e.target.checked }
-                        setFormData({ ...formData, human_service_hours: hours })
-                      }}
-                      className="mb-2 rounded border-gray-300 text-emerald-500 focus:ring-emerald-500"
-                    />
-                    <p className="font-medium text-gray-700 text-sm">{day.label}</p>
-                    <p className="text-xs text-gray-400">Clique para definir o horário</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {DAYS.map((day) => {
+                const dayConfig = formData.human_service_hours?.[day.key] || {}
+                const isEnabled = dayConfig.enabled || false
+                return (
+                  <div
+                    key={day.key}
+                    className={`border rounded-lg p-3 transition-colors ${
+                      isEnabled ? 'border-emerald-300 bg-emerald-50/50' : 'border-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <input
+                        type="checkbox"
+                        checked={isEnabled}
+                        onChange={(e) => {
+                          const hours = { ...(formData.human_service_hours || {}) }
+                          hours[day.key] = {
+                            ...hours[day.key],
+                            enabled: e.target.checked,
+                            start: hours[day.key]?.start || '08:00',
+                            end: hours[day.key]?.end || '18:00',
+                          }
+                          setFormData({ ...formData, human_service_hours: hours })
+                        }}
+                        className="rounded border-gray-300 text-emerald-500 focus:ring-emerald-500"
+                      />
+                      <span className={`font-medium text-sm ${isEnabled ? 'text-emerald-700' : 'text-gray-600'}`}>
+                        {day.label}
+                      </span>
+                    </div>
+                    {isEnabled && (
+                      <div className="flex items-center gap-1.5 ml-6">
+                        <input
+                          type="time"
+                          value={dayConfig.start || '08:00'}
+                          onChange={(e) => {
+                            const hours = { ...(formData.human_service_hours || {}) }
+                            hours[day.key] = { ...hours[day.key], start: e.target.value }
+                            setFormData({ ...formData, human_service_hours: hours })
+                          }}
+                          className="px-2 py-1 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 w-24"
+                        />
+                        <span className="text-xs text-gray-400">até</span>
+                        <input
+                          type="time"
+                          value={dayConfig.end || '18:00'}
+                          onChange={(e) => {
+                            const hours = { ...(formData.human_service_hours || {}) }
+                            hours[day.key] = { ...hours[day.key], end: e.target.value }
+                            setFormData({ ...formData, human_service_hours: hours })
+                          }}
+                          className="px-2 py-1 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500 w-24"
+                        />
+                      </div>
+                    )}
+                    {!isEnabled && (
+                      <p className="text-xs text-gray-400 ml-6">IA ativa o dia todo</p>
+                    )}
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
 

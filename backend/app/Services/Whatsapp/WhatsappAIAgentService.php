@@ -35,7 +35,6 @@ class WhatsappAIAgentService
         }
 
         try {
-            // HANDOFF: Se um humano assumiu a conversa, não responder
             if ($conversation->assigned_user_id !== null) {
                 Log::info('AI Agent: Human takeover detected, skipping response', [
                     'conversationId' => $conversation->id,
@@ -44,15 +43,21 @@ class WhatsappAIAgentService
                 return;
             }
 
-            // Check rate limits
             if (!$this->checkRateLimits($session, $conversation)) {
                 return;
             }
 
-            // Get active AI Agent
             $aiAgent = $this->getActiveAIAgent($session);
             if (!$aiAgent) {
                 Log::debug('AI Agent not active for session', ['sessionId' => $session->id]);
+                return;
+            }
+
+            if (!$this->isWithinServiceHours($aiAgent)) {
+                Log::info('AI Agent: Outside service hours, skipping response', [
+                    'sessionId' => $session->id,
+                    'conversationId' => $conversation->id,
+                ]);
                 return;
             }
 
@@ -95,6 +100,52 @@ class WhatsappAIAgentService
                 'line' => $e->getLine(),
             ]);
         }
+    }
+
+    /**
+     * Check if current time is within the configured service hours.
+     * If no hours are configured, AI is always active.
+     */
+    private function isWithinServiceHours(AiChatAgent $aiAgent): bool
+    {
+        $hours = $aiAgent->human_service_hours;
+
+        if (empty($hours) || !is_array($hours)) {
+            return true;
+        }
+
+        $dayMap = [
+            1 => 'monday',
+            2 => 'tuesday',
+            3 => 'wednesday',
+            4 => 'thursday',
+            5 => 'friday',
+            6 => 'saturday',
+            0 => 'sunday',
+        ];
+
+        $now = now()->timezone('America/Sao_Paulo');
+        $dayKey = $dayMap[$now->dayOfWeek] ?? null;
+
+        if (!$dayKey || !isset($hours[$dayKey])) {
+            return true;
+        }
+
+        $dayConfig = $hours[$dayKey];
+
+        if (!($dayConfig['enabled'] ?? false)) {
+            return true;
+        }
+
+        $start = $dayConfig['start'] ?? null;
+        $end = $dayConfig['end'] ?? null;
+
+        if (!$start || !$end) {
+            return true;
+        }
+
+        $currentTime = $now->format('H:i');
+        return $currentTime >= $start && $currentTime <= $end;
     }
 
     /**
