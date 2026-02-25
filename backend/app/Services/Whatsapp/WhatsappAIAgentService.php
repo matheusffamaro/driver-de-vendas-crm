@@ -262,13 +262,18 @@ class WhatsappAIAgentService
         // Build knowledge base
         $knowledgeBase = $this->buildKnowledgeBase($aiAgent);
 
-        // Build instructions
-        $instructions = [
-            'function_definition' => $aiAgent->function_definition,
-            'company_info' => $aiAgent->company_info,
-            'tone' => $aiAgent->tone,
-            'knowledge_guidelines' => $aiAgent->knowledge_guidelines,
-        ];
+        $instructions = $aiAgent->instruction_type === 'custom'
+            ? ['custom_instructions' => $aiAgent->custom_instructions]
+            : [
+                'function_definition' => $aiAgent->function_definition,
+                'company_info' => $aiAgent->company_info,
+                'tone' => $aiAgent->tone,
+                'knowledge_guidelines' => $aiAgent->knowledge_guidelines,
+                'incorrect_info_prevention' => $aiAgent->incorrect_info_prevention,
+                'human_escalation_rules' => $aiAgent->human_escalation_rules,
+                'useful_links' => $aiAgent->useful_links,
+                'conversation_examples' => $aiAgent->conversation_examples,
+            ];
 
         $context = [
             'knowledge_base' => $knowledgeBase['content'],

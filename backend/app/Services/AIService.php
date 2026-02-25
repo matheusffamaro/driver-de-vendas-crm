@@ -747,20 +747,47 @@ PROMPT;
         return $result;
     }
 
-    // Helper methods
     private function buildCompactSystemPrompt(array $instructions): string
     {
-        $parts = ['Assistente virtual em PT-BR. Respostas curtas e diretas.'];
+        if (!empty($instructions['custom_instructions'])) {
+            return "Assistente virtual em PT-BR.\n\n" . $this->truncate($instructions['custom_instructions'], 2000);
+        }
+
+        $parts = ['Assistente virtual em PT-BR.'];
 
         if (!empty($instructions['function_definition'])) {
-            $parts[] = 'Função: ' . $this->truncate($instructions['function_definition'], 200);
+            $parts[] = "Sua função: {$this->truncate($instructions['function_definition'], 300)}";
+        }
+
+        if (!empty($instructions['company_info'])) {
+            $parts[] = "Sobre a empresa/produtos: {$this->truncate($instructions['company_info'], 400)}";
         }
 
         if (!empty($instructions['tone'])) {
-            $parts[] = 'Tom: ' . $this->truncate($instructions['tone'], 100);
+            $parts[] = "Tom da conversa: {$this->truncate($instructions['tone'], 150)}";
         }
 
-        return implode(' ', $parts);
+        if (!empty($instructions['knowledge_guidelines'])) {
+            $parts[] = "Orientações de conhecimento: {$this->truncate($instructions['knowledge_guidelines'], 200)}";
+        }
+
+        if (!empty($instructions['incorrect_info_prevention'])) {
+            $parts[] = "IMPORTANTE - Prevenção de erros: {$this->truncate($instructions['incorrect_info_prevention'], 200)}";
+        }
+
+        if (!empty($instructions['human_escalation_rules'])) {
+            $parts[] = "Encaminhar para humano quando: {$this->truncate($instructions['human_escalation_rules'], 200)}";
+        }
+
+        if (!empty($instructions['useful_links'])) {
+            $parts[] = "Links úteis para compartilhar: {$this->truncate($instructions['useful_links'], 200)}";
+        }
+
+        if (!empty($instructions['conversation_examples'])) {
+            $parts[] = "Exemplos de conversa:\n{$this->truncate($instructions['conversation_examples'], 300)}";
+        }
+
+        return implode("\n\n", $parts);
     }
 
     private function buildChatPrompt(string $message, array $context): string

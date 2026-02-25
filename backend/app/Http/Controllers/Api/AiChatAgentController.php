@@ -218,11 +218,11 @@ class AiChatAgentController extends Controller
             'message' => 'required|string|max:1000',
         ]);
 
-        $agent = AiChatAgent::first();
-        if (!$agent || !$agent->is_active) {
+        $agent = AiChatAgent::with('documents')->first();
+        if (!$agent) {
             return response()->json([
                 'success' => false,
-                'message' => 'Agente não está ativo.',
+                'message' => 'Configure o agente primeiro.',
             ], 400);
         }
 
@@ -231,7 +231,6 @@ class AiChatAgentController extends Controller
             ?? $request->user()?->id;
         $aiService = new AIService($tenantId, $request->user()?->id);
         
-        // Build context from knowledge base
         $knowledgeBase = '';
         foreach ($agent->documents as $doc) {
             if ($doc->content) {
@@ -239,12 +238,18 @@ class AiChatAgentController extends Controller
             }
         }
 
-        $instructions = [
-            'function_definition' => $agent->function_definition,
-            'company_info' => $agent->company_info,
-            'tone' => $agent->tone,
-            'knowledge_guidelines' => $agent->knowledge_guidelines,
-        ];
+        $instructions = $agent->instruction_type === 'custom'
+            ? ['custom_instructions' => $agent->custom_instructions]
+            : [
+                'function_definition' => $agent->function_definition,
+                'company_info' => $agent->company_info,
+                'tone' => $agent->tone,
+                'knowledge_guidelines' => $agent->knowledge_guidelines,
+                'incorrect_info_prevention' => $agent->incorrect_info_prevention,
+                'human_escalation_rules' => $agent->human_escalation_rules,
+                'useful_links' => $agent->useful_links,
+                'conversation_examples' => $agent->conversation_examples,
+            ];
 
         $context = [
             'knowledge_base' => $knowledgeBase,
@@ -294,21 +299,48 @@ class AiChatAgentController extends Controller
         ]);
     }
 
-    /**
-     * Extract text content from uploaded file.
-     */
     private function extractTextContent($file): ?string
     {
-        $extension = $file->getClientOriginalExtension();
-        
-        if ($extension === 'txt') {
-            return file_get_contents($file->getRealPath());
+        $extension = strtolower($file->getClientOriginalExtension());
+        $path = $file->getRealPath();
+
+        try {
+            if ($extension === 'txt') {
+                return file_get_contents($path);
+            }
+
+            if ($extension === 'pdf') {
+                $parser = new \Smalot\PdfParser\Parser();
+                $pdf = $parser->parseFile($path);
+                $text = $pdf->getText();
+                return !empty(trim($text)) ? trim($text) : null;
+            }
+
+            if (in_array($extension, ['doc', 'docx'])) {
+                $phpWord = \PhpOffice\PhpWord\IOFactory::load($path);
+                $text = '';
+                foreach ($phpWord->getSections() as $section) {
+                    foreach ($section->getElements() as $element) {
+                        if (method_exists($element, 'getText')) {
+                            $text .= $element->getText() . "\n";
+                        } elseif (method_exists($element, 'getElements')) {
+                            foreach ($element->getElements() as $child) {
+                                if (method_exists($child, 'getText')) {
+                                    $text .= $child->getText() . "\n";
+                                }
+                            }
+                        }
+                    }
+                }
+                return !empty(trim($text)) ? trim($text) : null;
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to extract text from document', [
+                'extension' => $extension,
+                'error' => $e->getMessage(),
+            ]);
         }
 
-        // For PDF and DOC files, we'd need additional libraries
-        // For now, return null and recommend text files
-        Log::info('Document uploaded, text extraction not implemented for: ' . $extension);
-        
         return null;
     }
 }

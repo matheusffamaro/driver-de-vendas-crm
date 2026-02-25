@@ -430,53 +430,70 @@ export default function AiAgentPage() {
             </select>
           </div>
 
-          {/* Instruction Fields */}
-          {[
-            { key: 'function_definition', label: 'Definição de Função', icon: Settings },
-            { key: 'company_info', label: 'Sobre a Empresa, Produtos e Serviços', icon: Info },
-            { key: 'tone', label: 'Tom da Conversa', icon: MessageSquare },
-            { key: 'knowledge_guidelines', label: 'Orientações sobre a Base de Conhecimento', icon: FileText },
-            { key: 'incorrect_info_prevention', label: 'Prevenção de Informações Incorretas', icon: XCircle },
-            { key: 'human_escalation_rules', label: 'Encaminhamento para Atendimento Humano', icon: Phone },
-            { key: 'useful_links', label: 'Links Úteis', icon: Info },
-            { key: 'conversation_examples', label: 'Exemplos de Conversa', icon: MessageSquare },
-          ].map((field) => (
-            <div key={field.key} className="border rounded-lg">
-              <button
-                onClick={() => toggleSection(field.key)}
-                className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50"
-              >
-                <div className="flex items-center gap-2">
-                  <field.icon className="h-4 w-4 text-gray-400" />
-                  <span className="font-medium text-gray-700">{field.label}</span>
-                </div>
-                {activeSection === field.key ? (
-                  <ChevronUp className="h-4 w-4 text-gray-400" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 text-gray-400" />
-                )}
-              </button>
-              {activeSection === field.key && (
-                <div className="px-4 pb-4">
-                  <button
-                    onClick={() => setFormData({ ...formData, [field.key]: defaults[field.key] || '' })}
-                    className="text-xs text-emerald-600 hover:text-emerald-700 mb-2 flex items-center gap-1"
-                  >
-                    <FileText className="h-3 w-3" />
-                    Usar padrão e editar
-                  </button>
-                  <textarea
-                    value={formData[field.key] || ''}
-                    onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
-                    rows={6}
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y text-sm"
-                    placeholder={defaults[field.key] || `Configure ${field.label.toLowerCase()}...`}
-                  />
-                  <p className="text-xs text-gray-400 text-right mt-1">Máx 2500 caracteres</p>
-                </div>
-              )}
+          {formData.instruction_type === 'custom' ? (
+            <div className="border rounded-lg p-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Instrução personalizada completa</label>
+              <p className="text-xs text-gray-500 mb-3">
+                Escreva todas as instruções que o chatbot deve seguir em um único texto.
+              </p>
+              <textarea
+                value={formData.custom_instructions || ''}
+                onChange={(e) => setFormData({ ...formData, custom_instructions: e.target.value })}
+                rows={12}
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y text-sm"
+                placeholder="Escreva as instruções completas para o chatbot..."
+              />
             </div>
-          ))}
+          ) : (
+            <>
+              {[
+                { key: 'function_definition', label: 'Definição de Função', icon: Settings },
+                { key: 'company_info', label: 'Sobre a Empresa, Produtos e Serviços', icon: Info },
+                { key: 'tone', label: 'Tom da Conversa', icon: MessageSquare },
+                { key: 'knowledge_guidelines', label: 'Orientações sobre a Base de Conhecimento', icon: FileText },
+                { key: 'incorrect_info_prevention', label: 'Prevenção de Informações Incorretas', icon: XCircle },
+                { key: 'human_escalation_rules', label: 'Encaminhamento para Atendimento Humano', icon: Phone },
+                { key: 'useful_links', label: 'Links Úteis', icon: Info },
+                { key: 'conversation_examples', label: 'Exemplos de Conversa', icon: MessageSquare },
+              ].map((field) => (
+                <div key={field.key} className="border rounded-lg">
+                  <button
+                    onClick={() => toggleSection(field.key)}
+                    className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50"
+                  >
+                    <div className="flex items-center gap-2">
+                      <field.icon className="h-4 w-4 text-gray-400" />
+                      <span className="font-medium text-gray-700">{field.label}</span>
+                    </div>
+                    {activeSection === field.key ? (
+                      <ChevronUp className="h-4 w-4 text-gray-400" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-gray-400" />
+                    )}
+                  </button>
+                  {activeSection === field.key && (
+                    <div className="px-4 pb-4">
+                      <button
+                        onClick={() => setFormData({ ...formData, [field.key]: defaults[field.key] || '' })}
+                        className="text-xs text-emerald-600 hover:text-emerald-700 mb-2 flex items-center gap-1"
+                      >
+                        <FileText className="h-3 w-3" />
+                        Usar padrão e editar
+                      </button>
+                      <textarea
+                        value={formData[field.key] || ''}
+                        onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
+                        rows={6}
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-y text-sm"
+                        placeholder={defaults[field.key] || `Configure ${field.label.toLowerCase()}...`}
+                      />
+                      <p className="text-xs text-gray-400 text-right mt-1">Máx 2500 caracteres</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
 
           <button
             onClick={handleSave}
@@ -511,7 +528,7 @@ export default function AiAgentPage() {
             />
             <button
               onClick={() => testChatMutation.mutate(testMessage)}
-              disabled={!testMessage.trim() || testChatMutation.isPending || !formData.is_active}
+              disabled={!testMessage.trim() || testChatMutation.isPending}
               className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               <Sparkles className={`h-4 w-4 ${testChatMutation.isPending ? 'animate-pulse' : ''}`} />
@@ -527,8 +544,8 @@ export default function AiAgentPage() {
           )}
 
           {!formData.is_active && (
-            <p className="text-sm text-amber-600">
-              ⚠️ Ative o chatbot para testar as respostas.
+            <p className="text-sm text-blue-600">
+              O teste funciona mesmo com o chatbot desativado.
             </p>
           )}
         </div>
