@@ -874,6 +874,28 @@ class WhatsappController extends Controller
                 return;
             }
 
+            // HANDOFF: Verificar se há mensagem humana recente (últimos 30min)
+            // Se sim, humano assumiu e IA não deve responder
+            // Refresh conversation para garantir dados atualizados
+            $conversation->refresh();
+            
+            $hasHumanMessage = WhatsappMessage::where('conversation_id', $conversation->id)
+                ->where('direction', 'outgoing')
+                ->where('created_at', '>=', now()->subMinutes(30))
+                ->where(function ($q) {
+                    $q->whereNull('sender_name')
+                        ->orWhere('sender_name', '!=', 'AI Agent');
+                })
+                ->exists();
+
+            if ($hasHumanMessage) {
+                Log::info('AI Agent: Human takeover detected, skipping response', [
+                    'conversationId' => $conversation->id,
+                    'sessionId' => $session->id,
+                ]);
+                return;
+            }
+
             // Check if AI Agent is active for this session
             // 1) Match this session OR global (null). Also accept legacy value 'default'.
             // 2) If nothing matches, fallback to any active agent (useful when session was recreated).
@@ -1494,6 +1516,7 @@ class WhatsappController extends Controller
                     'content' => $messageType === 'text' ? $content : ($content ?: $request->file('media')?->getClientOriginalName()),
                     'status' => 'sent',
                     'sender_id' => auth()->id(),
+                    'sender_name' => auth()->user()?->name ?? 'Humano',
                     'sent_at' => now(),
                 ]);
 

@@ -37,25 +37,10 @@ class WhatsappAIAgentService
         try {
             $conversation->refresh();
 
-            // Human takeover detection:
-            // For personal sessions, assigned_user_id == session->user_id is auto-assignment, NOT takeover.
-            // Takeover = a DIFFERENT user claimed the conversation OR the owner sent a manual message.
-            $isAutoAssigned = (
-                $session->user_id !== null
-                && $conversation->assigned_user_id === $session->user_id
-            );
-
-            if ($conversation->assigned_user_id !== null && !$isAutoAssigned) {
-                Log::info('AI Agent: Human takeover detected (different user), skipping response', [
-                    'conversationId' => $conversation->id,
-                    'assignedUserId' => $conversation->assigned_user_id,
-                    'sessionUserId' => $session->user_id,
-                ]);
-                return;
-            }
-
+            // HANDOFF: Se há mensagem humana recente (últimos 30min), não responder
+            // Isso detecta quando QUALQUER usuário (admin, manager, vendedor) assumiu a conversa
             if ($this->hasRecentHumanMessage($conversation)) {
-                Log::info('AI Agent: Recent human message detected, skipping response', [
+                Log::info('AI Agent: Human takeover detected (recent human message), skipping response', [
                     'conversationId' => $conversation->id,
                 ]);
                 return;
