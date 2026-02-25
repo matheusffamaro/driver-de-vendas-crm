@@ -2147,7 +2147,7 @@ function AddToPipelineModal({
           name: conversation.contact_name || conversation.contact_phone,
           phone: conversation.contact_phone,
           email: null,
-          type: 'lead',
+          type: 'individual',
           status: 'active',
           notes: `Contato criado automaticamente a partir do WhatsApp`,
         })
