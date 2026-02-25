@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Scopes\TenantScope;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,7 +11,13 @@ class AiChatAgent extends Model
 {
     use HasFactory, HasUuids;
 
+    protected static function booted(): void
+    {
+        static::addGlobalScope(new TenantScope);
+    }
+
     protected $fillable = [
+        'tenant_id',
         'name',
         'is_active',
         'whatsapp_session_id',
@@ -46,6 +53,11 @@ class AiChatAgent extends Model
     public function logs()
     {
         return $this->hasMany(AiChatLog::class, 'agent_id');
+    }
+
+    public function tenant()
+    {
+        return $this->belongsTo(Tenant::class);
     }
 
     public function whatsappSession()

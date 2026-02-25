@@ -31,22 +31,23 @@ class AiChatAgentController extends Controller
     /**
      * Get the AI Chat Agent configuration.
      */
-    public function show(): JsonResponse
+    public function show(Request $request): JsonResponse
     {
-        // Get or create the agent (single instance for now)
+        $tenantId = $request->user()->tenant_id;
+
         $agent = AiChatAgent::with('documents')->first();
         
         if (!$agent) {
             $defaults = AiChatAgent::getDefaultInstructions();
             $agent = AiChatAgent::create([
                 'id' => Str::uuid(),
+                'tenant_id' => $tenantId,
                 'name' => 'Agente de Chat',
                 'is_active' => false,
                 ...$defaults,
             ]);
         }
 
-        // Add AI model info to response
         $aiService = new AIService();
 
         return response()->json([
@@ -62,11 +63,14 @@ class AiChatAgentController extends Controller
      */
     public function update(Request $request): JsonResponse
     {
+        $tenantId = $request->user()->tenant_id;
+
         $agent = AiChatAgent::first();
         
         if (!$agent) {
             $agent = AiChatAgent::create([
                 'id' => Str::uuid(),
+                'tenant_id' => $tenantId,
                 'name' => 'Agente de Chat',
             ]);
         }
@@ -130,6 +134,7 @@ class AiChatAgentController extends Controller
 
         $document = AiKnowledgeDocument::create([
             'id' => Str::uuid(),
+            'tenant_id' => $request->user()->tenant_id,
             'agent_id' => $agent->id,
             'name' => $file->getClientOriginalName(),
             'file_path' => $path,

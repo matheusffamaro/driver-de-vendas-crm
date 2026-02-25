@@ -202,8 +202,11 @@ class WhatsappAIAgentService
      */
     private function getActiveAIAgent(WhatsappSession $session): ?AiChatAgent
     {
-        // Try to find agent for this session or global
-        $aiAgent = AiChatAgent::with('documents')
+        $tenantId = $session->tenant_id;
+
+        $aiAgent = AiChatAgent::withoutGlobalScopes()
+            ->with('documents')
+            ->where('tenant_id', $tenantId)
             ->where('is_active', true)
             ->where(function ($q) use ($session) {
                 $q->where('whatsapp_session_id', $session->id)
@@ -212,9 +215,10 @@ class WhatsappAIAgentService
             })
             ->first();
 
-        // Fallback to any active agent
         if (!$aiAgent) {
-            $aiAgent = AiChatAgent::with('documents')
+            $aiAgent = AiChatAgent::withoutGlobalScopes()
+                ->with('documents')
+                ->where('tenant_id', $tenantId)
                 ->where('is_active', true)
                 ->first();
         }
