@@ -1420,9 +1420,10 @@ class WhatsappController extends Controller
                 ], 403);
             }
         } else {
-            // Non-global session: conversation must stay assigned to session owner
             if ($conversation->session?->user_id !== null && $conversation->assigned_user_id !== $conversation->session->user_id) {
                 $conversation->update(['assigned_user_id' => $conversation->session->user_id]);
+            } elseif ($conversation->assigned_user_id === null) {
+                $conversation->update(['assigned_user_id' => $user->id]);
             }
         }
         $session = $conversation->session;
