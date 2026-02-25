@@ -35,18 +35,25 @@ class WhatsappAIAgentService
         }
 
         try {
-            // Fresh read from DB to catch any concurrent sendMessage updates
             $conversation->refresh();
 
-            if ($conversation->assigned_user_id !== null) {
-                Log::info('AI Agent: Human takeover detected, skipping response', [
+            // Human takeover detection:
+            // For personal sessions, assigned_user_id == session->user_id is auto-assignment, NOT takeover.
+            // Takeover = a DIFFERENT user claimed the conversation OR the owner sent a manual message.
+            $isAutoAssigned = (
+                $session->user_id !== null
+                && $conversation->assigned_user_id === $session->user_id
+            );
+
+            if ($conversation->assigned_user_id !== null && !$isAutoAssigned) {
+                Log::info('AI Agent: Human takeover detected (different user), skipping response', [
                     'conversationId' => $conversation->id,
                     'assignedUserId' => $conversation->assigned_user_id,
+                    'sessionUserId' => $session->user_id,
                 ]);
                 return;
             }
 
-            // Also check if a human sent a recent outgoing message on this conversation
             if ($this->hasRecentHumanMessage($conversation)) {
                 Log::info('AI Agent: Recent human message detected, skipping response', [
                     'conversationId' => $conversation->id,
@@ -95,12 +102,22 @@ class WhatsappAIAgentService
                 return;
             }
 
-            // Re-check human takeover AFTER generating response (may have taken seconds)
+            // Re-check after generation (may have taken seconds)
             $conversation->refresh();
-            if ($conversation->assigned_user_id !== null) {
+            $isStillAutoAssigned = (
+                $session->user_id !== null
+                && $conversation->assigned_user_id === $session->user_id
+            );
+            if ($conversation->assigned_user_id !== null && !$isStillAutoAssigned) {
                 Log::info('AI Agent: Human takeover detected after generation, discarding response', [
                     'conversationId' => $conversation->id,
                     'assignedUserId' => $conversation->assigned_user_id,
+                ]);
+                return;
+            }
+            if ($this->hasRecentHumanMessage($conversation)) {
+                Log::info('AI Agent: Human message detected after generation, discarding response', [
+                    'conversationId' => $conversation->id,
                 ]);
                 return;
             }
