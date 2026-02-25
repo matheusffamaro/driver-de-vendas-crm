@@ -1,0 +1,315 @@
+═══════════════════════════════════════════════════════════════════════════
+🚀 COMANDOS RÁPIDOS - Copie e Cole no Servidor
+═══════════════════════════════════════════════════════════════════════════
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1️⃣ DIAGNÓSTICO COMPLETO (rode primeiro)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+bash debug-ia.sh
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2️⃣ FORÇAR IA A RESPONDER (se diagnóstico mostrou que está OK)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+bash forcar-ia-responder.sh
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3️⃣ VERIFICAR SE IA ESTÁ ATIVA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+docker exec dv-api php artisan tinker --execute="
+\$agent = \App\Models\AiChatAgent::where('is_active', true)->first();
+echo \$agent ? ('IA ATIVA: ' . \$agent->name) : 'NENHUMA IA ATIVA!';
+"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4️⃣ VER ÚLTIMAS CONVERSAS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+docker exec dv-api php artisan tinker --execute="
+\$convs = \App\Models\WhatsappConversation::orderBy('last_message_at', 'desc')->limit(5)->get();
+foreach (\$convs as \$c) {
+    \$name = \$c->contact_name ?? \$c->contact_phone;
+    \$time = \$c->last_message_at->format('H:i d/m');
+    echo \$name . ' - ' . \$time . '\n';
+}
+"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5️⃣ VER ÚLTIMAS 10 MENSAGENS (última conversa)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+docker exec dv-api php artisan tinker --execute="
+\$conv = \App\Models\WhatsappConversation::orderBy('last_message_at', 'desc')->first();
+\$msgs = \App\Models\WhatsappMessage::where('conversation_id', \$conv->id)->orderBy('created_at', 'desc')->limit(10)->get();
+foreach (\$msgs as \$m) {
+    \$dir = \$m->direction === 'incoming' ? 'IN' : 'OUT';
+    \$sender = \$m->sender_name ?? 'null';
+    \$time = \$m->created_at->format('H:i:s');
+    echo \"[\$time] \$dir (\$sender): \" . substr(\$m->content, 0, 40) . \"\n\";
+}
+"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6️⃣ VERIFICAR HANDOFF (última conversa)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+docker exec dv-api php artisan tinker --execute="
+\$conv = \App\Models\WhatsappConversation::orderBy('last_message_at', 'desc')->first();
+\$hasHuman = \App\Models\WhatsappMessage::where('conversation_id', \$conv->id)
+    ->where('direction', 'outgoing')
+    ->where('created_at', '>=', now()->subMinutes(30))
+    ->where(function (\$q) {
+        \$q->whereNull('sender_name')->orWhere('sender_name', '!=', 'AI Agent');
+    })
+    ->exists();
+echo \$hasHuman ? 'HANDOFF ATIVO (IA não vai responder)' : 'HANDOFF INATIVO (IA pode responder)';
+"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7️⃣ LIMPAR HANDOFF (última conversa)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+docker exec dv-api php artisan tinker --execute="
+\$conv = \App\Models\WhatsappConversation::orderBy('last_message_at', 'desc')->first();
+\$conv->update(['assigned_user_id' => null]);
+echo 'Handoff removido. IA pode responder.';
+"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8️⃣ LIMPAR HANDOFF DE TODAS AS CONVERSAS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+docker exec dv-api php artisan tinker --execute="
+\$count = \App\Models\WhatsappConversation::whereNotNull('assigned_user_id')->count();
+\App\Models\WhatsappConversation::query()->update(['assigned_user_id' => null]);
+echo 'Handoff removido de ' . \$count . ' conversas';
+"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+9️⃣ LIMPAR TODOS OS CACHES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+docker exec dv-api php artisan cache:clear && docker exec dv-api php artisan config:clear && echo "Cache limpo"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔟 VER LOGS DA IA (últimos 50)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+docker logs dv-api --tail=50 | grep "AI Agent"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1️⃣1️⃣ TESTAR GROQ API DIRETAMENTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+docker exec dv-api php artisan tinker --execute="
+\$aiService = new \App\Services\AIService();
+\$result = \$aiService->generateChatResponse('Oi, tudo bem?', [], []);
+if (\$result['success']) {
+    echo 'GROQ OK\n';
+    echo 'Resposta: ' . substr(\$result['response'], 0, 100) . '\n';
+} else {
+    echo 'GROQ ERRO: ' . \$result['message'] . '\n';
+}
+"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1️⃣2️⃣ FORÇAR RESPOSTA PARA CONVERSA ESPECÍFICA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Substitua CONV_ID_AQUI pelo ID da conversa
+
+docker exec dv-api php artisan tinker --execute="
+\$conv = \App\Models\WhatsappConversation::with('session')->find('CONV_ID_AQUI');
+\$session = \$conv->session;
+
+// Limpar handoff
+\$conv->update(['assigned_user_id' => null]);
+
+// Limpar cache
+\Cache::forget('ai_agent_global:' . \$session->id);
+\Cache::forget('ai_agent_debounce:' . \$conv->id);
+
+// Processar última mensagem
+\$msg = \App\Models\WhatsappMessage::where('conversation_id', \$conv->id)
+    ->where('direction', 'incoming')
+    ->orderBy('created_at', 'desc')
+    ->first();
+
+if (\$msg) {
+    \$aiService = new \App\Services\Whatsapp\WhatsappAIAgentService();
+    \$aiService->processAutoResponse(\$session, \$conv, \$msg->content);
+    echo 'Processado! Aguardar 3 segundos e verificar chat.';
+} else {
+    echo 'Nenhuma mensagem para processar';
+}
+"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1️⃣3️⃣ ATIVAR AI AGENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+docker exec dv-api php artisan tinker --execute="
+\$agent = \App\Models\AiChatAgent::first();
+if (\$agent) {
+    \$agent->update(['is_active' => true]);
+    echo 'AI Agent ativado: ' . \$agent->name;
+} else {
+    echo 'Nenhum AI Agent encontrado. Criar um no frontend.';
+}
+"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1️⃣4️⃣ VER CONVERSAS COM HANDOFF ATIVO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+docker exec dv-api php artisan tinker --execute="
+\$convs = \App\Models\WhatsappConversation::whereNotNull('assigned_user_id')->get();
+echo 'Conversas com handoff: ' . \$convs->count() . '\n\n';
+foreach (\$convs as \$c) {
+    echo '• ' . (\$c->contact_name ?? \$c->contact_phone) . '\n';
+}
+"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1️⃣5️⃣ VERIFICAR CONFIGURAÇÃO COMPLETA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+docker exec dv-api php artisan tinker --execute="
+echo '🤖 AI Agent:\n';
+\$agent = \App\Models\AiChatAgent::where('is_active', true)->first();
+echo '   ' . (\$agent ? 'Ativo: ' . \$agent->name : 'INATIVO!') . '\n\n';
+
+echo '🔑 Groq API Key:\n';
+\$key = config('services.groq.api_key');
+echo '   ' . (\$key ? 'Configurada' : 'NÃO CONFIGURADA!') . '\n\n';
+
+echo '📱 WhatsApp AI:\n';
+\$enabled = config('whatsapp.ai_agent.enabled');
+echo '   ' . (\$enabled ? 'Habilitado' : 'DESABILITADO!') . '\n';
+"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1️⃣6️⃣ TESTAR IA MANUALMENTE (resposta rápida)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+docker exec dv-api php artisan tinker --execute="
+// Testar Groq API
+\$ai = new \App\Services\AIService();
+\$result = \$ai->generateChatResponse('Olá!', [], []);
+echo \$result['success'] ? ('IA OK: ' . \$result['response']) : ('ERRO: ' . \$result['message']);
+"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1️⃣7️⃣ VER LOGS EM TEMPO REAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+docker logs -f dv-api | grep "AI Agent"
+
+(Pressione Ctrl+C para sair)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1️⃣8️⃣ VERIFICAR MENSAGENS NÃO RESPONDIDAS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+docker exec dv-api php artisan tinker --execute="
+\$conv = \App\Models\WhatsappConversation::orderBy('last_message_at', 'desc')->first();
+\$incoming = \App\Models\WhatsappMessage::where('conversation_id', \$conv->id)
+    ->where('direction', 'incoming')
+    ->orderBy('created_at', 'desc')
+    ->limit(5)
+    ->get();
+
+echo 'Últimas mensagens do cliente:\n\n';
+foreach (\$incoming as \$msg) {
+    \$aiAfter = \App\Models\WhatsappMessage::where('conversation_id', \$conv->id)
+        ->where('direction', 'outgoing')
+        ->where('sender_name', 'AI Agent')
+        ->where('created_at', '>', \$msg->created_at)
+        ->exists();
+    \$status = \$aiAfter ? '✅' : '❌';
+    echo \$status . ' ' . \$msg->created_at->format('H:i') . ' - ' . substr(\$msg->content, 0, 30) . '\n';
+}
+"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1️⃣9️⃣ LIMPAR HANDOFF + FORÇAR RESPOSTA (tudo em um)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+docker exec dv-api php artisan tinker --execute="
+\$conv = \App\Models\WhatsappConversation::with('session')->orderBy('last_message_at', 'desc')->first();
+\$session = \$conv->session;
+
+echo 'Conversa: ' . (\$conv->contact_name ?? \$conv->contact_phone) . '\n\n';
+
+// 1. Limpar handoff
+\$conv->update(['assigned_user_id' => null]);
+echo '1. Handoff removido\n';
+
+// 2. Limpar cache
+\Cache::forget('ai_agent_global:' . \$session->id);
+\Cache::forget('ai_agent_debounce:' . \$conv->id);
+echo '2. Cache limpo\n';
+
+// 3. Processar última mensagem
+\$msg = \App\Models\WhatsappMessage::where('conversation_id', \$conv->id)
+    ->where('direction', 'incoming')
+    ->orderBy('created_at', 'desc')
+    ->first();
+
+if (\$msg) {
+    echo '3. Processando: ' . substr(\$msg->content, 0, 40) . '\n\n';
+    
+    try {
+        \$aiService = new \App\Services\Whatsapp\WhatsappAIAgentService();
+        \$aiService->processAutoResponse(\$session, \$conv, \$msg->content);
+        echo '✅ Processado!\n\n';
+        
+        sleep(3);
+        
+        \$aiResp = \App\Models\WhatsappMessage::where('conversation_id', \$conv->id)
+            ->where('direction', 'outgoing')
+            ->where('sender_name', 'AI Agent')
+            ->where('created_at', '>', \$msg->created_at)
+            ->first();
+        
+        if (\$aiResp) {
+            echo '🤖 IA RESPONDEU!\n';
+            echo 'Resposta: ' . substr(\$aiResp->content, 0, 80) . '\n';
+        } else {
+            echo '❌ IA não respondeu. Ver logs.\n';
+        }
+    } catch (\Exception \$e) {
+        echo '❌ ERRO: ' . \$e->getMessage() . '\n';
+    }
+} else {
+    echo '3. Nenhuma mensagem para processar\n';
+}
+"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2️⃣0️⃣ VER CUSTOS DE HOJE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+docker exec dv-api php artisan tinker --execute="
+\$today = \App\Models\AiTokenUsage::whereDate('created_at', today())->get();
+\$prompt = \$today->sum('prompt_tokens');
+\$completion = \$today->sum('completion_tokens');
+\$totalTokens = \$prompt + \$completion;
+\$cost = ((\$prompt / 1000000) * 0.59) + ((\$completion / 1000000) * 0.79);
+\$costBRL = \$cost * 5.80;
+echo 'Tokens hoje: ' . number_format(\$totalTokens) . '\n';
+echo 'Custo: USD ' . number_format(\$cost, 4) . ' / BRL ' . number_format(\$costBRL, 2) . '\n';
+"
+
+═══════════════════════════════════════════════════════════════════════════
+
+ORDEM RECOMENDADA:
+
+1. bash debug-ia.sh          ← Diagnóstico completo
+2. bash forcar-ia-responder.sh   ← Forçar IA manualmente
+3. Verificar no frontend se IA respondeu
+4. Se não respondeu, ver logs
+
+═══════════════════════════════════════════════════════════════════════════
