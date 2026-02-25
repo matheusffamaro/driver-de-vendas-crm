@@ -425,6 +425,9 @@ export default function WhatsAppPage() {
   const [showQuickRepliesModal, setShowQuickRepliesModal] = useState(false)
   const [showQueuesModal, setShowQueuesModal] = useState(false)
   const [showAddToPipelineModal, setShowAddToPipelineModal] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const [mediaPreview, setMediaPreview] = useState<{ file: File; type: string; url: string } | null>(null)
+  const chatAreaRef = useRef<HTMLDivElement>(null)
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault()
@@ -439,6 +442,68 @@ export default function WhatsAppPage() {
     inputRef.current?.focus()
   }
 
+  // Send media file
+  const sendMediaFile = (file: File, type: string) => {
+    if (!selectedConversation) return
+
+    whatsappApi.sendMessage(selectedConversation.id, { type, media: file })
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ['whatsapp-messages', selectedConversation.id] })
+        setMediaPreview(null)
+      })
+      .catch((err) => {
+        console.error('Error sending file:', err)
+        toast.error('Erro', 'Não foi possível enviar o arquivo. Tente novamente.')
+      })
+  }
+
+  // Handle drag and drop
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDragging(true)
+    }
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const rect = chatAreaRef.current?.getBoundingClientRect()
+    if (rect && (e.clientX < rect.left || e.clientX >= rect.right || e.clientY < rect.top || e.clientY >= rect.bottom)) {
+      setIsDragging(false)
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+
+    const file = e.dataTransfer.files?.[0]
+    if (!file || !selectedConversation) return
+
+    // Determine file type
+    let type = 'document'
+    if (file.type.startsWith('image/')) type = 'image'
+    else if (file.type.startsWith('video/')) type = 'video'
+    else if (file.type.startsWith('audio/')) type = 'audio'
+
+    // Show preview for images and videos
+    if (type === 'image' || type === 'video') {
+      const url = URL.createObjectURL(file)
+      setMediaPreview({ file, type, url })
+    } else {
+      // Send directly for documents and audio
+      sendMediaFile(file, type)
+    }
+  }
+
   // Handle file selection
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -450,15 +515,14 @@ export default function WhatsAppPage() {
     else if (file.type.startsWith('video/')) type = 'video'
     else if (file.type.startsWith('audio/')) type = 'audio'
 
-    // Send file via API
-    whatsappApi.sendMessage(selectedConversation.id, { type, media: file })
-      .then(() => {
-        queryClient.invalidateQueries({ queryKey: ['whatsapp-messages', selectedConversation.id] })
-      })
-      .catch((err) => {
-        console.error('Error sending file:', err)
-        toast.error('Erro', 'Não foi possível enviar o arquivo. Tente novamente.')
-      })
+    // Show preview for images and videos
+    if (type === 'image' || type === 'video') {
+      const url = URL.createObjectURL(file)
+      setMediaPreview({ file, type, url })
+    } else {
+      // Send directly for documents and audio
+      sendMediaFile(file, type)
+    }
 
     // Clear input
     if (fileInputRef.current) {
@@ -1057,8 +1121,23 @@ export default function WhatsAppPage() {
 
             {/* Messages */}
             <div 
-              className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50 dark:bg-gray-900"
+              ref={chatAreaRef}
+              onDragEnter={handleDragEnter}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50 dark:bg-gray-900 relative"
             >
+              {/* Drag overlay */}
+              {isDragging && (
+                <div className="absolute inset-0 bg-emerald-500/10 backdrop-blur-sm flex items-center justify-center z-10 border-4 border-dashed border-emerald-500 rounded-lg m-4">
+                  <div className="text-center">
+                    <Image className="h-16 w-16 text-emerald-500 mx-auto mb-3" />
+                    <p className="text-lg font-semibold text-emerald-700">Solte aqui para enviar</p>
+                    <p className="text-sm text-gray-600 mt-1">Imagens, vídeos, documentos ou áudios</p>
+                  </div>
+                </div>
+              )}
               {loadingMessages ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
@@ -1134,97 +1213,118 @@ export default function WhatsAppPage() {
                         {message.type === 'text' ? (
                           <p className="whitespace-pre-wrap">{message.content}</p>
                         ) : message.type === 'image' ? (
-                          <div className="max-w-[280px]">
+                          <div className="max-w-[320px]">
                             {message.media_url ? (
-                              <a 
-                                href={`${process.env.NEXT_PUBLIC_API_URL || ''}/whatsapp/media/${message.media_url.split('/').pop()}`}
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="block"
-                              >
-                                <img 
-                                  src={`${process.env.NEXT_PUBLIC_API_URL || ''}/whatsapp/media/${message.media_url.split('/').pop()}`}
-                                  alt={message.content || 'Imagem'}
-                                  className="rounded-lg max-w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
-                                  loading="lazy"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.style.display = 'none';
-                                    target.nextElementSibling?.classList.remove('hidden');
-                                  }}
-                                />
-                                <div className="hidden flex items-center gap-2 py-2">
+                              <div className="space-y-2">
+                                <a 
+                                  href={`${process.env.NEXT_PUBLIC_API_URL || ''}/whatsapp/media/${message.media_url.split('/').pop()}`}
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="block group"
+                                >
+                                  <div className="relative overflow-hidden rounded-lg">
+                                    <img 
+                                      src={`${process.env.NEXT_PUBLIC_API_URL || ''}/whatsapp/media/${message.media_url.split('/').pop()}`}
+                                      alt={message.content || 'Imagem'}
+                                      className="rounded-lg w-full h-auto cursor-pointer group-hover:opacity-95 transition-opacity"
+                                      loading="lazy"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                        target.closest('a')?.nextElementSibling?.classList.remove('hidden');
+                                      }}
+                                    />
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors rounded-lg" />
+                                  </div>
+                                </a>
+                                <div className="hidden flex items-center gap-2 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg px-3">
                                   <Image className="h-5 w-5 text-gray-400" />
                                   <span className="text-sm">📷 {message.content || 'Imagem'}</span>
                                 </div>
-                              </a>
+                                {message.content && (
+                                  <p className="text-sm whitespace-pre-wrap px-1">{message.content}</p>
+                                )}
+                              </div>
                             ) : (
-                              <div className="flex items-center gap-2 py-2">
+                              <div className="flex items-center gap-2 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg px-3">
                                 <Image className="h-5 w-5 text-gray-400" />
                                 <span className="text-sm">📷 {message.content || 'Imagem'}</span>
                               </div>
                             )}
-                            {message.content && message.media_url && (
-                              <p className="text-sm mt-1 whitespace-pre-wrap">{message.content}</p>
-                            )}
                           </div>
                         ) : message.type === 'video' ? (
-                          <div className="max-w-[280px]">
+                          <div className="max-w-[320px]">
                             {message.media_url ? (
-                              <video 
-                                src={`${process.env.NEXT_PUBLIC_API_URL || ''}/whatsapp/media/${message.media_url.split('/').pop()}`}
-                                controls
-                                className="rounded-lg max-w-full h-auto"
-                                preload="metadata"
-                              >
-                                <source src={`${process.env.NEXT_PUBLIC_API_URL || ''}/whatsapp/media/${message.media_url.split('/').pop()}`} type="video/mp4" />
-                                Seu navegador não suporta vídeos.
-                              </video>
+                              <div className="space-y-2">
+                                <div className="rounded-lg overflow-hidden bg-black">
+                                  <video 
+                                    src={`${process.env.NEXT_PUBLIC_API_URL || ''}/whatsapp/media/${message.media_url.split('/').pop()}`}
+                                    controls
+                                    className="w-full h-auto"
+                                    preload="metadata"
+                                  >
+                                    <source src={`${process.env.NEXT_PUBLIC_API_URL || ''}/whatsapp/media/${message.media_url.split('/').pop()}`} type="video/mp4" />
+                                    Seu navegador não suporta vídeos.
+                                  </video>
+                                </div>
+                                {message.content && (
+                                  <p className="text-sm whitespace-pre-wrap px-1">{message.content}</p>
+                                )}
+                              </div>
                             ) : (
-                              <div className="flex items-center gap-2 py-2">
+                              <div className="flex items-center gap-2 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg px-3">
                                 <span className="text-sm">🎬 {message.content || 'Vídeo'}</span>
                               </div>
                             )}
-                            {message.content && message.media_url && (
-                              <p className="text-sm mt-1 whitespace-pre-wrap">{message.content}</p>
-                            )}
                           </div>
                         ) : message.type === 'ptt' || message.type === 'audio' ? (
-                          <div className="min-w-[200px]">
+                          <div className="min-w-[250px]">
                             {message.media_url ? (
-                              <audio 
-                                src={`${process.env.NEXT_PUBLIC_API_URL || ''}/whatsapp/media/${message.media_url.split('/').pop()}`}
-                                controls
-                                className="w-full max-w-[250px]"
-                                preload="metadata"
-                              >
-                                <source src={`${process.env.NEXT_PUBLIC_API_URL || ''}/whatsapp/media/${message.media_url.split('/').pop()}`} />
-                                Seu navegador não suporta áudio.
-                              </audio>
+                              <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <Mic className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                                </div>
+                                <div className="flex-1">
+                                  <audio 
+                                    src={`${process.env.NEXT_PUBLIC_API_URL || ''}/whatsapp/media/${message.media_url.split('/').pop()}`}
+                                    controls
+                                    className="w-full"
+                                    preload="metadata"
+                                    style={{ height: '32px' }}
+                                  >
+                                    <source src={`${process.env.NEXT_PUBLIC_API_URL || ''}/whatsapp/media/${message.media_url.split('/').pop()}`} />
+                                    Seu navegador não suporta áudio.
+                                  </audio>
+                                </div>
+                              </div>
                             ) : (
-                              <div className="flex items-center gap-2 py-2">
+                              <div className="flex items-center gap-2 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg px-3">
                                 <Mic className="h-5 w-5 text-gray-400" />
                                 <span className="text-sm">🎤 Mensagem de voz</span>
                               </div>
                             )}
                           </div>
                         ) : message.type === 'document' ? (
-                          <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                            <FileText className="h-8 w-8 text-gray-400 flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">
-                                {message.media_filename || message.content || 'Documento'}
-                              </p>
-                              {message.media_url && (
-                                <a
-                                  href={`${process.env.NEXT_PUBLIC_API_URL || ''}/whatsapp/media/${message.media_url.split('/').pop()}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-xs text-emerald-600 hover:underline"
-                                >
-                                  Baixar arquivo
-                                </a>
-                              )}
+                          <div className="min-w-[250px]">
+                            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate text-gray-800 dark:text-gray-200">
+                                  {message.media_filename || message.content || 'Documento'}
+                                </p>
+                                {message.media_url && (
+                                  <a
+                                    href={`${process.env.NEXT_PUBLIC_API_URL || ''}/whatsapp/media/${message.media_url.split('/').pop()}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 hover:underline mt-1"
+                                  >
+                                    <span>📥 Baixar</span>
+                                  </a>
+                                )}
+                              </div>
                             </div>
                           </div>
                         ) : message.type === 'sticker' ? (
@@ -1518,6 +1618,96 @@ export default function WhatsAppPage() {
               queryClient.invalidateQueries({ queryKey: ['whatsapp-conversations'] })
             }}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Media Preview Modal */}
+      <AnimatePresence>
+        {mediaPreview && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+            onClick={() => {
+              URL.revokeObjectURL(mediaPreview.url)
+              setMediaPreview(null)
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl mx-4 overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-6 py-4 border-b dark:border-gray-700">
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
+                  Enviar {mediaPreview.type === 'image' ? 'Imagem' : 'Vídeo'}
+                </h3>
+                <button 
+                  onClick={() => {
+                    URL.revokeObjectURL(mediaPreview.url)
+                    setMediaPreview(null)
+                  }}
+                  className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                >
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="p-6">
+                {/* Preview */}
+                <div className="mb-4 flex items-center justify-center bg-gray-100 dark:bg-gray-900 rounded-lg overflow-hidden max-h-[400px]">
+                  {mediaPreview.type === 'image' ? (
+                    <img 
+                      src={mediaPreview.url} 
+                      alt="Preview" 
+                      className="max-w-full max-h-[400px] h-auto object-contain"
+                    />
+                  ) : (
+                    <video 
+                      src={mediaPreview.url} 
+                      controls 
+                      className="max-w-full max-h-[400px] h-auto"
+                    />
+                  )}
+                </div>
+
+                {/* File info */}
+                <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    <span className="font-medium">Arquivo:</span> {mediaPreview.file.name}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                    <span className="font-medium">Tamanho:</span> {(mediaPreview.file.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      URL.revokeObjectURL(mediaPreview.url)
+                      setMediaPreview(null)
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => sendMediaFile(mediaPreview.file, mediaPreview.type)}
+                    className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 flex items-center justify-center gap-2"
+                  >
+                    <Send className="h-4 w-4" />
+                    Enviar
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
