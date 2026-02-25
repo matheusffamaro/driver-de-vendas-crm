@@ -247,21 +247,38 @@ class WhatsappWebhookService
                     }
                 }
 
-                // 3) Fallback: match by contact_phone
+                // 3) Fallback: match by contact_phone (normalized digits only)
                 if (!$conversation) {
                     $phone = $contactData['phone_number'] ?? $this->stripJidSuffix($remoteJid);
-                    if (!empty($phone) && strlen($phone) >= 10 && strlen($phone) <= 15) {
-                        $conversation = WhatsappConversation::withTrashed()
+                    $normalizedPhone = preg_replace('/\D/', '', $phone); // Remove tudo exceto dígitos
+                    
+                    if (!empty($normalizedPhone) && strlen($normalizedPhone) >= 10 && strlen($normalizedPhone) <= 15) {
+                        // Buscar TODAS as conversas com esse telefone
+                        $candidates = WhatsappConversation::withTrashed()
                             ->where('session_id', $session->id)
-                            ->where('contact_phone', $phone)
-                            ->first();
+                            ->where('is_group', false)
+                            ->get()
+                            ->filter(function ($conv) use ($normalizedPhone) {
+                                $convPhone = preg_replace('/\D/', '', $conv->contact_phone ?? '');
+                                return $convPhone === $normalizedPhone;
+                            });
 
-                        if ($conversation) {
-                            Log::info('Conversation matched by phone number', [
-                                'phone' => $phone,
+                        if ($candidates->isNotEmpty()) {
+                            // Se múltiplas, pegar a melhor
+                            $conversation = $this->selectBestConversation($candidates);
+                            
+                            Log::info('Conversation matched by normalized phone', [
+                                'normalizedPhone' => $normalizedPhone,
+                                'candidatesFound' => $candidates->count(),
+                                'selected' => $conversation->id,
                                 'existing_jid' => $conversation->remote_jid,
                                 'new_jid' => $remoteJid,
                             ]);
+                            
+                            // Se encontrou mais de 1, mesclar duplicatas em background
+                            if ($candidates->count() > 1) {
+                                $this->mergeDuplicateConversations($candidates, $conversation);
+                            }
                         }
                     }
                 }
@@ -467,5 +484,68 @@ class WhatsappWebhookService
         }
 
         return true;
+    }
+
+    /**
+     * Select the best conversation from multiple candidates
+     * Priority: @s.whatsapp.net > most messages > most recent
+     */
+    private function selectBestConversation($conversations): WhatsappConversation
+    {
+        return $conversations->sortByDesc(function ($conv) {
+            $score = 0;
+            
+            // Preferir @s.whatsapp.net (JID de telefone padrão)
+            if (str_ends_with($conv->remote_jid, '@s.whatsapp.net')) {
+                $score += 1000000;
+            }
+            
+            // Quantidade de mensagens
+            $msgCount = WhatsappMessage::where('conversation_id', $conv->id)->count();
+            $score += $msgCount * 100;
+            
+            // Mais recente
+            if ($conv->last_message_at) {
+                $score += $conv->last_message_at->timestamp;
+            }
+            
+            return $score;
+        })->first();
+    }
+
+    /**
+     * Merge duplicate conversations into the selected one
+     * Moves messages and deletes duplicates
+     */
+    private function mergeDuplicateConversations($candidates, $keepConversation): void
+    {
+        try {
+            $duplicates = $candidates->filter(fn($c) => $c->id !== $keepConversation->id);
+            
+            foreach ($duplicates as $duplicate) {
+                // Mover todas as mensagens para a conversa principal
+                WhatsappMessage::where('conversation_id', $duplicate->id)
+                    ->update(['conversation_id' => $keepConversation->id]);
+                
+                Log::info('Merged duplicate conversation', [
+                    'kept' => $keepConversation->id,
+                    'duplicate' => $duplicate->id,
+                    'duplicateJid' => $duplicate->remote_jid,
+                ]);
+                
+                // Deletar a duplicata
+                $duplicate->delete();
+            }
+            
+            Log::info('Duplicate conversations merged successfully', [
+                'kept' => $keepConversation->id,
+                'merged_count' => $duplicates->count(),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to merge duplicate conversations', [
+                'error' => $e->getMessage(),
+                'kept' => $keepConversation->id,
+            ]);
+        }
     }
 }
