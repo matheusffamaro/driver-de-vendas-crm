@@ -222,22 +222,27 @@ class TokenService
      */
     public function checkRateLimit(): array
     {
-        $plan = $this->getTenantPlan()->plan;
-        $limit = $plan->request_limit_per_minute ?? 10;
-        
-        $cacheKey = "rate_limit:{$this->tenantId}";
-        $count = Cache::get($cacheKey, 0);
+        try {
+            $plan = $this->getTenantPlan()->plan;
+            $limit = $plan->request_limit_per_minute ?? 10;
+            
+            $cacheKey = "rate_limit:{$this->tenantId}";
+            $count = Cache::get($cacheKey, 0);
 
-        if ($count >= $limit) {
-            return [
-                'allowed' => false,
-                'reason' => 'rate_limited',
-                'message' => "Limite de {$limit} requisições/minuto atingido.",
-                'retry_after' => 60,
-            ];
+            if ($count >= $limit) {
+                return [
+                    'allowed' => false,
+                    'reason' => 'rate_limited',
+                    'message' => "Limite de {$limit} requisições/minuto atingido.",
+                    'retry_after' => 60,
+                ];
+            }
+
+            return ['allowed' => true, 'remaining' => $limit - $count];
+        } catch (\Exception $e) {
+            Log::warning('Rate limit check failed, allowing request', ['error' => $e->getMessage()]);
+            return ['allowed' => true, 'remaining' => 999];
         }
-
-        return ['allowed' => true, 'remaining' => $limit - $count];
     }
 
     /**
@@ -245,8 +250,12 @@ class TokenService
      */
     public function incrementRateLimit(): void
     {
-        $cacheKey = "rate_limit:{$this->tenantId}";
-        $count = Cache::get($cacheKey, 0);
-        Cache::put($cacheKey, $count + 1, 60);
+        try {
+            $cacheKey = "rate_limit:{$this->tenantId}";
+            $count = Cache::get($cacheKey, 0);
+            Cache::put($cacheKey, $count + 1, 60);
+        } catch (\Exception $e) {
+            Log::warning('Rate limit increment failed', ['error' => $e->getMessage()]);
+        }
     }
 }

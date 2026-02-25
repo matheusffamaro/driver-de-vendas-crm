@@ -215,29 +215,26 @@ class AIService
             return ['success' => false, 'message' => 'Chave da API de IA não configurada.'];
         }
 
-        // OTIMIZAÇÃO: Selecionar modelo baseado na complexidade
-        $selectedModel = $this->selectModel($feature, $prompt);
-
-        // Check token limits and feature access
-        $estimatedTokens = TokenService::estimateTokens($prompt . $systemInstruction);
-        $tokenCheck = $this->getTokenService()->canUseTokens($feature, $estimatedTokens);
-        
-        if (!$tokenCheck['allowed']) {
-            return [
-                'success' => false,
-                'message' => $tokenCheck['message'],
-                'reason' => $tokenCheck['reason'] ?? 'limit_exceeded',
-                'upgrade_required' => $tokenCheck['upgrade_required'] ?? false,
-            ];
-        }
-
-        // Check rate limit
-        $rateCheck = $this->getTokenService()->checkRateLimit();
-        if (!$rateCheck['allowed']) {
-            return ['success' => false, 'message' => $rateCheck['message']];
-        }
-
         try {
+            $selectedModel = $this->selectModel($feature, $prompt);
+
+            $estimatedTokens = TokenService::estimateTokens($prompt . $systemInstruction);
+            $tokenCheck = $this->getTokenService()->canUseTokens($feature, $estimatedTokens);
+            
+            if (!$tokenCheck['allowed']) {
+                return [
+                    'success' => false,
+                    'message' => $tokenCheck['message'],
+                    'reason' => $tokenCheck['reason'] ?? 'limit_exceeded',
+                    'upgrade_required' => $tokenCheck['upgrade_required'] ?? false,
+                ];
+            }
+
+            $rateCheck = $this->getTokenService()->checkRateLimit();
+            if (!$rateCheck['allowed']) {
+                return ['success' => false, 'message' => $rateCheck['message']];
+            }
+
             if ($this->provider === 'gemini') {
                 return $this->callGeminiGenerateContent($feature, $prompt, $systemInstruction, $temperature, $maxTokens, $startTime);
             }

@@ -14,6 +14,7 @@ class WhatsappConversation extends Model
     protected $fillable = [
         'session_id',
         'remote_jid',
+        'lid_jid',
         'is_group',
         'group_name',
         'contact_phone',

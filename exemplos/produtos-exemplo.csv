@@ -1,0 +1,16 @@
+name,type,sku,description,price,cost,unit,stock,min_stock,category,is_active
+Consultoria Comercial Básica,service,SRV-001,Diagnóstico comercial com análise de processos de vendas e recomendações estratégicas,2500.00,800.00,hr,0,0,Consultoria,1
+Consultoria Comercial Premium,service,SRV-002,Consultoria completa com implantação de processos e acompanhamento mensal por 3 meses,8500.00,3200.00,projeto,0,0,Consultoria,1
+Treinamento de Vendas - Equipe,service,SRV-003,Workshop presencial de 8h para equipes de vendas com até 15 participantes,4200.00,1500.00,sessão,0,0,Treinamentos,1
+Treinamento de Liderança Comercial,service,SRV-004,Programa de desenvolvimento para gestores comerciais - 4 encontros de 4h,6800.00,2400.00,programa,0,0,Treinamentos,1
+Mentoria Individual de Vendedor,service,SRV-005,Acompanhamento individual semanal por 2 meses com metas e feedback,3200.00,1200.00,mês,0,0,Mentoria,1
+Plano CRM Starter,product,CRM-001,Licença mensal do CRM com até 3 usuários e 1 funil de vendas,149.90,20.00,licença,999,10,Software,1
+Plano CRM Professional,product,CRM-002,Licença mensal do CRM com até 10 usuários e funis ilimitados,299.90,20.00,licença,999,10,Software,1
+Plano CRM Enterprise,product,CRM-003,Licença mensal do CRM com usuários ilimitados e todos os add-ons,399.90,20.00,licença,999,10,Software,1
+Implantação e Setup do CRM,service,SRV-006,Configuração completa do sistema com importação de dados e treinamento inicial,1800.00,600.00,projeto,0,0,Implantação,1
+Suporte Técnico Dedicado,service,SRV-007,Canal exclusivo de suporte com SLA de 2h para resolução de chamados,890.00,300.00,mês,0,0,Suporte,1
+E-book Playbook de Vendas B2B,product,DIG-001,Material digital com frameworks e templates para processos de vendas B2B,97.00,15.00,un,999,5,Material Digital,1
+Kit de Templates Comerciais,product,DIG-002,Pacote com 25 templates de propostas e apresentações comerciais editáveis,197.00,25.00,un,999,5,Material Digital,1
+Integração WhatsApp Business API,service,SRV-008,Setup e configuração da API oficial do WhatsApp Business com o CRM,2200.00,800.00,projeto,0,0,Implantação,1
+Relatório de Diagnóstico Comercial,service,SRV-009,Análise detalhada do funil de vendas com relatório de gaps e plano de ação,1500.00,500.00,relatório,0,0,Consultoria,1
+Palestra Motivacional de Vendas,service,SRV-010,Palestra de 2h sobre mindset e técnicas de alta performance em vendas,5500.00,2000.00,evento,0,0,Treinamentos,1

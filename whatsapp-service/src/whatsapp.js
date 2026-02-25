@@ -187,7 +187,12 @@ class WhatsAppManager {
       socket.ev.on('contacts.upsert', (contacts) => {
         for (const contact of contacts) {
           sessionData.contacts.set(contact.id, contact);
+          // Build LID-to-phone mapping from contacts
+          if (contact.lid && contact.id) {
+            this.storeLidMapping(sessionId, contact.id, contact.lid);
+          }
         }
+        logger.info(`Contacts loaded: ${contacts.length}, LID mappings: ${this.lidToPhoneMap ? this.lidToPhoneMap.size : 0}`);
       });
 
       socket.ev.on('chats.upsert', (chats) => {
@@ -274,7 +279,6 @@ class WhatsAppManager {
     const session = this.sessions.get(sessionId);
     if (!session) return;
 
-    // Handle both notify (new messages) and history (historical messages)
     const isHistory = type === 'history' || type === 'append';
     
     logger.info(`Processing ${messages.length} messages for session ${sessionId}, type: ${type}`);
@@ -283,13 +287,32 @@ class WhatsAppManager {
       if (!msg.message || msg.key.remoteJid === 'status@broadcast') continue;
       const messageData = this.extractMessageData(msg);
       
-      // Skip system/internal messages
       if (!messageData) continue;
       
-      // Mark as historical message
       messageData.isHistory = isHistory;
+
+      // Resolve LID to phone JID to prevent duplicate conversations
+      if (messageData.isLid && !messageData.isGroup) {
+        const resolvedJid = this.resolveLidToPhoneJid(sessionId, msg.key.remoteJid);
+        if (resolvedJid) {
+          logger.info(`Resolved LID ${msg.key.remoteJid} -> ${resolvedJid}`);
+          messageData.from = resolvedJid;
+          messageData.resolvedFromLid = true;
+          messageData.originalLidJid = msg.key.remoteJid;
+          messageData.senderPhone = this.stripJidSuffix(resolvedJid);
+        } else {
+          logger.warn(`Could not resolve LID: ${msg.key.remoteJid}`);
+          messageData.unresolvedLid = true;
+        }
+      }
+
+      // If incoming message from phone JID, store mapping if participant has LID
+      if (!messageData.isLid && !messageData.fromMe && msg.key.participant) {
+        if (this.isLidJid(msg.key.participant)) {
+          this.storeLidMapping(sessionId, msg.key.remoteJid, msg.key.participant);
+        }
+      }
       
-      // Download media for image/video/audio/document messages
       const mediaTypes = ['imageMessage', 'videoMessage', 'audioMessage', 'documentMessage', 'stickerMessage'];
       const messageType = Object.keys(msg.message)[0];
       
@@ -308,7 +331,6 @@ class WhatsAppManager {
         }
       }
       
-      // For groups, get the actual group name
       if (messageData.isGroup && !isHistory) {
         const groupName = await this.getGroupName(sessionId, msg.key.remoteJid);
         if (groupName) {
@@ -316,9 +338,9 @@ class WhatsAppManager {
         }
       }
       
-      // Fetch profile picture for the conversation (group or contact)
       if (!isHistory) {
-        const profilePicture = await this.getProfilePicture(sessionId, msg.key.remoteJid);
+        const picJid = messageData.resolvedFromLid ? messageData.from : msg.key.remoteJid;
+        const profilePicture = await this.getProfilePicture(sessionId, picJid);
         if (profilePicture) {
           messageData.profilePicture = profilePicture;
         }
@@ -457,11 +479,51 @@ class WhatsAppManager {
     }
   }
 
+  isLidJid(jid) {
+    return jid && jid.endsWith('@lid');
+  }
+
+  stripJidSuffix(jid) {
+    if (!jid) return null;
+    return jid.replace(/@(s\.whatsapp\.net|c\.us|lid|g\.us)$/, '');
+  }
+
+  resolveLidToPhoneJid(sessionId, lidJid) {
+    const session = this.sessions.get(sessionId);
+    if (!session) return null;
+
+    if (!this.lidToPhoneMap) {
+      this.lidToPhoneMap = new Map();
+    }
+
+    if (this.lidToPhoneMap.has(lidJid)) {
+      return this.lidToPhoneMap.get(lidJid);
+    }
+
+    for (const [contactJid, contact] of session.contacts) {
+      if (contact.lid === lidJid && contactJid.endsWith('@s.whatsapp.net')) {
+        this.lidToPhoneMap.set(lidJid, contactJid);
+        return contactJid;
+      }
+    }
+
+    return null;
+  }
+
+  storeLidMapping(sessionId, phoneJid, lidJid) {
+    if (!phoneJid || !lidJid) return;
+    if (!this.lidToPhoneMap) {
+      this.lidToPhoneMap = new Map();
+    }
+    this.lidToPhoneMap.set(lidJid, phoneJid);
+    this.lidToPhoneMap.set(phoneJid, lidJid);
+    logger.debug(`LID mapping stored: ${lidJid} <-> ${phoneJid}`);
+  }
+
   extractMessageData(msg) {
     const messageType = Object.keys(msg.message)[0];
     const content = msg.message[messageType];
     
-    // Skip system/internal messages
     const systemMessageTypes = [
       'messageContextInfo',
       'senderKeyDistributionMessage', 
@@ -474,7 +536,7 @@ class WhatsAppManager {
     ];
     
     if (systemMessageTypes.includes(messageType)) {
-      return null; // Will be filtered out
+      return null;
     }
     
     let type = 'text';
@@ -520,38 +582,38 @@ class WhatsAppManager {
         text = '👥 Contatos';
         break;
       default:
-        // For unknown types, don't show the raw type name
         type = 'unknown';
         text = null;
     }
 
-    // Check if it's a group message
     const isGroup = msg.key.remoteJid?.endsWith('@g.us');
-    
-    // For groups, participant is the actual sender
     const participant = msg.key.participant || null;
     
-    // Extract phone number from participant or remoteJid
     let senderPhone = null;
     if (isGroup && participant) {
-      senderPhone = participant.replace('@s.whatsapp.net', '').replace('@c.us', '');
+      senderPhone = this.stripJidSuffix(participant);
     } else if (!msg.key.fromMe) {
-      senderPhone = msg.key.remoteJid?.replace('@s.whatsapp.net', '').replace('@c.us', '').replace('@g.us', '');
+      senderPhone = this.stripJidSuffix(msg.key.remoteJid);
     }
+
+    const remoteJid = msg.key.remoteJid;
+    const isLid = this.isLidJid(remoteJid);
+    const lidJid = isLid ? remoteJid : null;
 
     return {
       messageId: msg.key.id,
-      from: msg.key.remoteJid,
+      from: remoteJid,
       fromMe: msg.key.fromMe,
       pushName: msg.pushName,
       timestamp: msg.messageTimestamp,
       type,
       text,
-      // Group-specific fields
       isGroup,
       participant,
       senderPhone,
       senderName: msg.pushName || null,
+      isLid,
+      lidJid,
     };
   }
 

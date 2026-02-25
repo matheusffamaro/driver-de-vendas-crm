@@ -1127,73 +1127,83 @@ class PipelineController extends Controller
      */
     public function aiAutoFill(Request $request, string $pipelineId, string $cardId): JsonResponse
     {
-        $card = PipelineCard::where('pipeline_id', $pipelineId)
-            ->with(['stage', 'contact', 'assignedTo', 'comments.user', 'history'])
-            ->findOrFail($cardId);
+        try {
+            $card = PipelineCard::where('pipeline_id', $pipelineId)
+                ->with(['stage', 'contact', 'assignedTo', 'comments.user', 'history'])
+                ->findOrFail($cardId);
 
-        // Use user's tenant_id for token tracking
-        $tenantId = $request->user()?->tenant_id;
-        $userId = $request->user()?->id;
-        $aiService = new AIService($tenantId, $userId);
-        
-        // Build context from card data
-        $cardContext = "Card: {$card->title}\n";
-        $cardContext .= "Contato: " . ($card->contact?->name ?? 'N/A') . "\n";
-        $cardContext .= "Estágio: " . ($card->stage?->name ?? 'N/A') . "\n";
-        $cardContext .= "Comentários: " . $card->comments->count() . "\n";
-        
-        $result = $aiService->autoFillCard(
-            $card->toArray(),
-            $card->comments->toArray(),
-            $card->history->toArray()
-        );
+            $tenantId = $request->user()?->tenant_id;
+            $userId = $request->user()?->id;
+            $aiService = new AIService($tenantId, $userId);
 
-        if ($result['success']) {
-            // Record in AI Learning
-            try {
-                $learningService = new \App\Services\AILearningService($tenantId);
-                
-                // Record feedback for autofill usage
-                $learningService->recordFeedback(
-                    userMessage: $cardContext,
-                    aiResponse: json_encode($result['suggestions']),
-                    rating: 'neutral',
-                    feature: 'autofill',
-                    options: [
-                        'card_id' => $cardId,
-                        'pipeline_id' => $pipelineId,
-                        'user_id' => $userId,
-                    ]
-                );
-                
-                // Learn pattern from this autofill
-                $learningService->learnPattern(
-                    intent: 'card_autofill',
-                    triggerKeywords: ['autofill', 'preencher', $card->stage?->name ?? ''],
-                    responseTemplate: $result['suggestions']['suggested_next_action'] ?? '',
-                    wasSuccessful: true
-                );
-                
-                \Log::info('AI Learning: Autofill recorded', [
-                    'tenant_id' => $tenantId,
-                    'card_id' => $cardId,
-                ]);
-            } catch (\Exception $e) {
-                \Log::error('AI Learning: Failed to record autofill', [
-                    'error' => $e->getMessage(),
-                ]);
+            if (!$aiService->isConfigured()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Serviço de IA não configurado. Verifique as chaves de API (GROQ_API_KEY ou GEMINI_API_KEY).',
+                ], 422);
             }
             
-            return response()->json([
-                'success' => true,
-                'data' => $result['suggestions'],
-            ]);
-        }
+            $cardContext = "Card: {$card->title}\n";
+            $cardContext .= "Contato: " . ($card->contact?->name ?? 'N/A') . "\n";
+            $cardContext .= "Estágio: " . ($card->stage?->name ?? 'N/A') . "\n";
+            $cardContext .= "Comentários: " . $card->comments->count() . "\n";
+            
+            $result = $aiService->autoFillCard(
+                $card->toArray(),
+                $card->comments->toArray(),
+                $card->history->toArray()
+            );
 
-        return response()->json([
-            'success' => false,
-            'message' => $result['message'],
-        ], 400);
+            if ($result['success']) {
+                try {
+                    $learningService = new \App\Services\AILearningService($tenantId);
+                    
+                    $learningService->recordFeedback(
+                        userMessage: $cardContext,
+                        aiResponse: json_encode($result['suggestions']),
+                        rating: 'neutral',
+                        feature: 'autofill',
+                        options: [
+                            'card_id' => $cardId,
+                            'pipeline_id' => $pipelineId,
+                            'user_id' => $userId,
+                        ]
+                    );
+                    
+                    $learningService->learnPattern(
+                        intent: 'card_autofill',
+                        triggerKeywords: ['autofill', 'preencher', $card->stage?->name ?? ''],
+                        responseTemplate: $result['suggestions']['suggested_next_action'] ?? '',
+                        wasSuccessful: true
+                    );
+                } catch (\Exception $e) {
+                    \Log::error('AI Learning: Failed to record autofill', ['error' => $e->getMessage()]);
+                }
+                
+                return response()->json([
+                    'success' => true,
+                    'data' => $result['suggestions'],
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'] ?? 'Não foi possível gerar sugestões.',
+            ], 400);
+
+        } catch (\Exception $e) {
+            \Log::error('AI AutoFill error', [
+                'pipeline_id' => $pipelineId,
+                'card_id' => $cardId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao processar preenchimento automático: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**

@@ -162,6 +162,16 @@ class WhatsappWebhookService
         }
     }
 
+    private function isLidJid(string $jid): bool
+    {
+        return str_ends_with($jid, '@lid');
+    }
+
+    private function stripJidSuffix(string $jid): string
+    {
+        return preg_replace('/@(s\.whatsapp\.net|c\.us|lid|g\.us)$/', '', $jid);
+    }
+
     /**
      * Extract contact data from message
      */
@@ -173,21 +183,25 @@ class WhatsappWebhookService
     ): array {
         if ($isGroup) {
             return [
-                'phone_number' => $data['senderPhone'] ?? 
-                    preg_replace('/@(s\.whatsapp\.net|c\.us)$/', '', $data['participant'] ?? ''),
+                'phone_number' => $data['senderPhone'] ?? $this->stripJidSuffix($data['participant'] ?? ''),
                 'contact_name' => !$fromMe ? ($data['senderName'] ?? $data['pushName'] ?? null) : null,
                 'group_name' => $data['groupName'] ?? 'Grupo',
             ];
         }
 
         return [
-            'phone_number' => preg_replace('/@(s\.whatsapp\.net|c\.us)$/', '', $remoteJid),
+            'phone_number' => $data['senderPhone'] ?? $this->stripJidSuffix($remoteJid),
             'contact_name' => !$fromMe ? ($data['pushName'] ?? null) : null,
+            'is_lid' => $data['isLid'] ?? $this->isLidJid($remoteJid),
+            'original_lid_jid' => $data['originalLidJid'] ?? null,
+            'profile_picture' => $data['profilePicture'] ?? null,
         ];
     }
 
     /**
-     * Find or create conversation with proper error handling
+     * Find or create conversation with proper error handling.
+     * Handles LID JIDs by matching on lid_jid, contact_phone, or original LID JID
+     * to prevent duplicate conversations for the same contact.
      */
     private function findOrCreateConversation(
         WhatsappSession $session,
@@ -196,10 +210,62 @@ class WhatsappWebhookService
         array $contactData
     ): ?WhatsappConversation {
         try {
+            // 1) Exact JID match
             $conversation = WhatsappConversation::withTrashed()
                 ->where('session_id', $session->id)
                 ->where('remote_jid', $remoteJid)
                 ->first();
+
+            // 2) If not found and not a group, try LID-based matching
+            if (!$conversation && !$isGroup) {
+                $isLid = $contactData['is_lid'] ?? $this->isLidJid($remoteJid);
+                $originalLid = $contactData['original_lid_jid'] ?? null;
+
+                if ($isLid) {
+                    // Current JID is a LID - look for conversation with this LID stored
+                    $conversation = WhatsappConversation::withTrashed()
+                        ->where('session_id', $session->id)
+                        ->where('lid_jid', $remoteJid)
+                        ->first();
+                } elseif ($originalLid) {
+                    // Node.js resolved LID to phone JID - look for conv with the original LID as remote_jid
+                    $conversation = WhatsappConversation::withTrashed()
+                        ->where('session_id', $session->id)
+                        ->where('remote_jid', $originalLid)
+                        ->first();
+
+                    if ($conversation) {
+                        // Update remote_jid from LID to resolved phone JID
+                        $conversation->update([
+                            'remote_jid' => $remoteJid,
+                            'lid_jid' => $originalLid,
+                        ]);
+                        Log::info('Conversation JID updated from LID to phone', [
+                            'lid' => $originalLid,
+                            'phone_jid' => $remoteJid,
+                        ]);
+                    }
+                }
+
+                // 3) Fallback: match by contact_phone
+                if (!$conversation) {
+                    $phone = $contactData['phone_number'] ?? $this->stripJidSuffix($remoteJid);
+                    if (!empty($phone) && strlen($phone) >= 10 && strlen($phone) <= 15) {
+                        $conversation = WhatsappConversation::withTrashed()
+                            ->where('session_id', $session->id)
+                            ->where('contact_phone', $phone)
+                            ->first();
+
+                        if ($conversation) {
+                            Log::info('Conversation matched by phone number', [
+                                'phone' => $phone,
+                                'existing_jid' => $conversation->remote_jid,
+                                'new_jid' => $remoteJid,
+                            ]);
+                        }
+                    }
+                }
+            }
 
             if (!$conversation) {
                 return $this->createNewConversation($session, $remoteJid, $isGroup, $contactData);
@@ -225,16 +291,24 @@ class WhatsappWebhookService
         bool $isGroup,
         array $contactData
     ): WhatsappConversation {
+        $isLid = $contactData['is_lid'] ?? $this->isLidJid($remoteJid);
+        $lidJid = $isLid ? $remoteJid : ($contactData['original_lid_jid'] ?? null);
+
         return WhatsappConversation::create([
             'id' => Str::uuid(),
             'session_id' => $session->id,
             'remote_jid' => $remoteJid,
+            'lid_jid' => $lidJid,
             'is_group' => $isGroup,
-            'group_name' => $isGroup ? $contactData['group_name'] : null,
-            'contact_phone' => !$isGroup ? $contactData['phone_number'] : null,
-            'contact_name' => !$isGroup ? $contactData['contact_name'] : null,
+            'group_name' => $isGroup ? ($contactData['group_name'] ?? 'Grupo') : null,
+            'contact_phone' => $isGroup
+                ? ($contactData['phone_number'] ?? $this->stripJidSuffix($remoteJid))
+                : ($contactData['phone_number'] ?? null),
+            'contact_name' => $isGroup
+                ? ($contactData['group_name'] ?? 'Grupo')
+                : ($contactData['contact_name'] ?? null),
             'profile_picture' => $contactData['profile_picture'] ?? null,
-            'assigned_user_id' => $session->user_id, // Auto-assign to session owner
+            'assigned_user_id' => $session->user_id,
             'last_message_at' => now(),
             'unread_count' => 1,
         ]);
@@ -253,9 +327,13 @@ class WhatsappWebhookService
 
         $updateData = [
             'is_group' => $isGroup,
-            'group_name' => $isGroup ? $contactData['group_name'] : null,
-            'contact_phone' => !$isGroup ? $contactData['phone_number'] : null,
-            'contact_name' => !$isGroup ? $contactData['contact_name'] : null,
+            'group_name' => $isGroup ? ($contactData['group_name'] ?? 'Grupo') : null,
+            'contact_phone' => $isGroup
+                ? ($contactData['phone_number'] ?? preg_replace('/@.*$/', '', $conversation->remote_jid))
+                : ($contactData['phone_number'] ?? null),
+            'contact_name' => $isGroup
+                ? ($contactData['group_name'] ?? 'Grupo')
+                : ($contactData['contact_name'] ?? null),
             'profile_picture' => $contactData['profile_picture'] ?? null,
             'last_message_at' => now(),
             'unread_count' => 1,
@@ -285,22 +363,30 @@ class WhatsappWebhookService
             'unread_count' => $conversation->unread_count + 1,
         ];
 
-        // Auto-assign if not assigned
         if (!$conversation->assigned_user_id && $session->user_id) {
             $updateData['assigned_user_id'] = $session->user_id;
         }
 
-        // Update group name or contact name
         if ($isGroup && !empty($contactData['group_name'])) {
             $updateData['group_name'] = $contactData['group_name'];
         } elseif (!$isGroup && !empty($contactData['contact_name'])) {
             $updateData['contact_name'] = $contactData['contact_name'];
         }
 
-        // Update profile picture if provided
         if (!empty($contactData['profile_picture']) && 
             $contactData['profile_picture'] !== $conversation->profile_picture) {
             $updateData['profile_picture'] = $contactData['profile_picture'];
+        }
+
+        // Store LID JID for future cross-reference
+        $originalLid = $contactData['original_lid_jid'] ?? null;
+        if ($originalLid && !$conversation->lid_jid) {
+            $updateData['lid_jid'] = $originalLid;
+        }
+
+        // If the current contact_phone is empty but we have one, set it
+        if (!$isGroup && empty($conversation->contact_phone) && !empty($contactData['phone_number'])) {
+            $updateData['contact_phone'] = $contactData['phone_number'];
         }
 
         $conversation->update($updateData);
