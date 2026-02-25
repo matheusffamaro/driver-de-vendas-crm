@@ -24,13 +24,12 @@ return new class extends Migration
             $table->index('tenant_id');
         });
 
-        // Backfill: assign existing agents to their tenant via whatsapp_session
         DB::statement("
             UPDATE ai_chat_agents
             SET tenant_id = (
                 SELECT ws.tenant_id
                 FROM whatsapp_sessions ws
-                WHERE ws.id = ai_chat_agents.whatsapp_session_id
+                WHERE ws.id::text = ai_chat_agents.whatsapp_session_id
                 LIMIT 1
             )
             WHERE whatsapp_session_id IS NOT NULL AND tenant_id IS NULL
