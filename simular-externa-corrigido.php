@@ -16,20 +16,19 @@ if (!$session) {
 echo "✅ Sessão encontrada: " . $session->phone_number . " (ID: " . $session->id . ")\n\n";
 
 // Webhook de mensagem fromMe=true (enviada pelo usuário no WhatsApp Web/App externo)
+// FORMATO CORRETO: dados diretos no array raiz, não aninhados em 'data'
 $webhookData = [
     'event' => 'message',
     'sessionId' => $session->id,
-    'data' => [
-        'from' => '5512988315292@s.whatsapp.net', // JID da Rosângela
-        'fromMe' => true, // MENSAGEM ENVIADA!
-        'to' => '5512991280763@s.whatsapp.net',
-        'type' => 'text',
-        'text' => 'Simulação de resposta externa - ' . date('H:i:s'),
-        'messageId' => 'simulate_' . uniqid(),
-        'timestamp' => time(),
-        'pushName' => null,
-        'isGroup' => false,
-    ]
+    'from' => '5512988315292@s.whatsapp.net', // JID da Rosângela
+    'fromMe' => true, // MENSAGEM ENVIADA!
+    'to' => '5512991280763@s.whatsapp.net',
+    'type' => 'text',
+    'text' => 'Simulação de resposta externa - ' . date('H:i:s'),
+    'messageId' => 'simulate_' . uniqid(),
+    'timestamp' => time(),
+    'pushName' => null,
+    'isGroup' => false,
 ];
 
 echo "📤 Webhook (fromMe=true):\n";
