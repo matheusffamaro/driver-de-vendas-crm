@@ -451,6 +451,10 @@ class AIService
         // OTIMIZAÇÃO 1: Respostas prontas para saudações simples (sem API)
         $quickResponse = $this->getQuickResponse($message);
         if ($quickResponse) {
+            // #region agent log Via7-H2
+            $logData = json_encode(['sessionId'=>'09ce68','location'=>'AIService.php:453','message'=>'Quick response USED','data'=>['tenant_id'=>$this->tenantId,'message'=>substr($message,0,50),'quick_response'=>substr($quickResponse,0,100),'source'=>'quick_response','NO_ACTIVATION_CHECK'=>true],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'Via7-H2'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData,FILE_APPEND);
+            // #endregion
+            
             Log::debug('AI using quick response (no API call)', ['message' => substr($message, 0, 30)]);
             return [
                 'success' => true,
