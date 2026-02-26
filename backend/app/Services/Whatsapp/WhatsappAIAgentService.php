@@ -30,6 +30,10 @@ class WhatsappAIAgentService
         WhatsappConversation $conversation,
         string $messageText
     ): void {
+        // #region agent log H1,H2,H3,H4
+        $logData = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappAIAgentService.php:32','message'=>'processAutoResponse called','data'=>['session_id'=>$session->id,'session_phone'=>$session->phone_number,'conversation_id'=>$conversation->id,'conversation_contact'=>$conversation->contact_name,'config_enabled'=>config('whatsapp.ai_agent.enabled')],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H1,H2,H3,H4'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/Users/matheus.amaro.matheusamaro/Documents/project-math/.cursor/debug-09ce68.log',$logData,FILE_APPEND);
+        // #endregion
+        
         if (!config('whatsapp.ai_agent.enabled')) {
             return;
         }
@@ -53,6 +57,9 @@ class WhatsappAIAgentService
             $aiAgent = $this->getActiveAIAgent($session);
             if (!$aiAgent) {
                 Log::debug('AI Agent not active for session', ['sessionId' => $session->id]);
+                // #region agent log H1,H5
+                $logData2 = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappAIAgentService.php:56','message'=>'No active AI agent, stopping','data'=>['session_id'=>$session->id],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H1,H5'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/Users/matheus.amaro.matheusamaro/Documents/project-math/.cursor/debug-09ce68.log',$logData2,FILE_APPEND);
+                // #endregion
                 return;
             }
 
@@ -72,6 +79,10 @@ class WhatsappAIAgentService
             $messageText = $this->combineRecentMessages($conversation, $messageText);
 
             $this->setRateLimitLocks($session, $conversation);
+
+            // #region agent log H1,H2,H4
+            $logData3 = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappAIAgentService.php:76','message'=>'About to generate AI response','data'=>['session_id'=>$session->id,'conversation_id'=>$conversation->id,'agent_id'=>$aiAgent->id,'agent_name'=>$aiAgent->name,'agent_whatsapp_session_id'=>$aiAgent->whatsapp_session_id,'will_respond'=>true],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H1,H2,H4'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/Users/matheus.amaro.matheusamaro/Documents/project-math/.cursor/debug-09ce68.log',$logData3,FILE_APPEND);
+            // #endregion
 
             Log::info('AI Agent processing message', [
                 'sessionId' => $session->id,
@@ -222,7 +233,11 @@ class WhatsappAIAgentService
     {
         $tenantId = $session->tenant_id;
 
-        return AiChatAgent::withoutGlobalScopes()
+        // #region agent log H1,H2,H3,H5
+        $logData = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappAIAgentService.php:223','message'=>'getActiveAIAgent called','data'=>['session_id'=>$session->id,'session_phone'=>$session->phone_number,'tenant_id'=>$tenantId],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H1,H2,H3,H5'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/Users/matheus.amaro.matheusamaro/Documents/project-math/.cursor/debug-09ce68.log',$logData,FILE_APPEND);
+        // #endregion
+        
+        $agent = AiChatAgent::withoutGlobalScopes()
             ->with('documents')
             ->where('tenant_id', $tenantId)
             ->where('is_active', true)
@@ -232,6 +247,12 @@ class WhatsappAIAgentService
                     ->orWhereNull('whatsapp_session_id');
             })
             ->first();
+
+        // #region agent log H1,H2,H5
+        $logData2 = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappAIAgentService.php:238','message'=>'getActiveAIAgent result','data'=>['agent_found'=>!is_null($agent),'agent_id'=>$agent?->id,'agent_name'=>$agent?->name,'agent_is_active'=>$agent?->is_active,'agent_whatsapp_session_id'=>$agent?->whatsapp_session_id,'current_session_id'=>$session->id],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H1,H2,H5'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/Users/matheus.amaro.matheusamaro/Documents/project-math/.cursor/debug-09ce68.log',$logData2,FILE_APPEND);
+        // #endregion
+
+        return $agent;
     }
 
     /**

@@ -853,6 +853,10 @@ class WhatsappController extends Controller
      */
     private function processAiAgentResponse(WhatsappSession $session, WhatsappConversation $conversation, string $messageText): void
     {
+        // #region agent log H2,H3,H4
+        $logData = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:854','message'=>'processAiAgentResponse (Controller) called','data'=>['session_id'=>$session->id,'session_phone'=>$session->phone_number,'conversation_id'=>$conversation->id,'conversation_contact'=>$conversation->contact_name],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H2,H3,H4'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/Users/matheus.amaro.matheusamaro/Documents/project-math/.cursor/debug-09ce68.log',$logData,FILE_APPEND);
+        // #endregion
+        
         try {
             // Global rate limit - max 30 AI requests per minute per session (Groq allows 30 RPM)
             $globalRateKey = "ai_agent_global:{$session->id}";
@@ -908,14 +912,25 @@ class WhatsappController extends Controller
                 })
                 ->first();
 
+            // #region agent log H2,H4,H5
+            $logData2 = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:910','message'=>'First AI agent query result','data'=>['agent_found'=>!is_null($aiAgent),'agent_id'=>$aiAgent?->id,'agent_name'=>$aiAgent?->name,'agent_is_active'=>$aiAgent?->is_active,'agent_whatsapp_session_id'=>$aiAgent?->whatsapp_session_id,'current_session_id'=>$session->id],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H2,H4,H5'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/Users/matheus.amaro.matheusamaro/Documents/project-math/.cursor/debug-09ce68.log',$logData2,FILE_APPEND);
+            // #endregion
+
             if (!$aiAgent) {
                 $aiAgent = \App\Models\AiChatAgent::with('documents')
                     ->where('is_active', true)
                     ->first();
+                
+                // #region agent log H2,H4,H5
+                $logData3 = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:915','message'=>'FALLBACK: Using ANY active agent','data'=>['fallback_agent_found'=>!is_null($aiAgent),'agent_id'=>$aiAgent?->id,'agent_name'=>$aiAgent?->name,'agent_whatsapp_session_id'=>$aiAgent?->whatsapp_session_id,'agent_tenant_id'=>$aiAgent?->tenant_id,'current_session_id'=>$session->id,'current_tenant_id'=>$session->tenant_id,'BUG_DETECTED'=>!is_null($aiAgent)],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H2,H4,H5'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/Users/matheus.amaro.matheusamaro/Documents/project-math/.cursor/debug-09ce68.log',$logData3,FILE_APPEND);
+                // #endregion
             }
 
             if (!$aiAgent) {
                 Log::debug('AI Agent not active for session', ['sessionId' => $session->id]);
+                // #region agent log H5
+                $logData4 = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:919','message'=>'No AI agent found, stopping','data'=>['session_id'=>$session->id],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H5'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/Users/matheus.amaro.matheusamaro/Documents/project-math/.cursor/debug-09ce68.log',$logData4,FILE_APPEND);
+                // #endregion
                 return;
             }
 
@@ -948,6 +963,10 @@ class WhatsappController extends Controller
             // Set rate limit and debounce locks
             \Cache::put($debounceKey, now()->timestamp, 60);
             \Cache::put($globalRateKey, $globalCount + 1, 60);
+
+            // #region agent log H2,H4
+            $logData5 = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:952','message'=>'Controller: About to generate AI response','data'=>['session_id'=>$session->id,'conversation_id'=>$conversation->id,'agent_id'=>$aiAgent->id,'agent_name'=>$aiAgent->name,'agent_whatsapp_session_id'=>$aiAgent->whatsapp_session_id,'will_respond'=>true,'RESPONDING_VIA_CONTROLLER'=>true],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H2,H4'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/Users/matheus.amaro.matheusamaro/Documents/project-math/.cursor/debug-09ce68.log',$logData5,FILE_APPEND);
+            // #endregion
 
             Log::info('AI Agent processing message', [
                 'sessionId' => $session->id,
