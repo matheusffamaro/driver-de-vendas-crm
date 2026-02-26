@@ -704,6 +704,58 @@ class WhatsappController extends Controller
                     }
                 }
             }
+            
+            // NEW: For fromMe messages (contactName=null), try to find existing conversation by normalized phone
+            if (!$conversation && !$isGroup && $fromMe && $phoneNumber) {
+                $normalizedPhone = preg_replace('/\D/', '', $phoneNumber);
+                
+                if (strlen($normalizedPhone) >= 10) {
+                    // Try to find conversation by matching normalized phone in contact_phone
+                    $existingByPhone = WhatsappConversation::withTrashed()
+                        ->where('session_id', $session->id)
+                        ->where('is_group', false)
+                        ->get()
+                        ->first(function($conv) use ($normalizedPhone) {
+                            $convPhone = preg_replace('/\D/', '', $conv->contact_phone ?? '');
+                            // Match last 8-10 digits (flexible matching)
+                            if (strlen($convPhone) >= 8 && strlen($normalizedPhone) >= 8) {
+                                $convLast10 = substr($convPhone, -10);
+                                $phoneLast10 = substr($normalizedPhone, -10);
+                                return $convLast10 === $phoneLast10;
+                            }
+                            return false;
+                        });
+                    
+                    if ($existingByPhone) {
+                        // #region agent log H1,H2
+                        $logData5 = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:720','message'=>'Found existing by PHONE (fromMe fix)','data'=>['existing_conv_id'=>$existingByPhone->id,'existing_jid'=>$existingByPhone->remote_jid,'existing_name'=>$existingByPhone->contact_name,'new_jid'=>$remoteJid,'normalized_phone'=>$normalizedPhone,'FIX_APPLIED'=>true],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H1,H2'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData5,FILE_APPEND);
+                        // #endregion
+                        
+                        $conversation = $existingByPhone;
+                        $dedupApplied = true;
+                        
+                        // Update with correct JID for future matches
+                        $updatePayload = [
+                            'remote_jid' => $remoteJid,
+                            'contact_phone' => $phoneNumber,
+                            'last_message_at' => now(),
+                        ];
+                        
+                        if ($session->user_id !== null) {
+                            $updatePayload['assigned_user_id'] = $session->user_id;
+                        }
+                        
+                        $conversation->update($updatePayload);
+                        
+                        if ($conversation->trashed()) {
+                            $conversation->restore();
+                            $conversation->update(['unread_count' => 1, 'is_archived' => false]);
+                        } else {
+                            $conversation->increment('unread_count');
+                        }
+                    }
+                }
+            }
 
             if (!$conversation) {
                 // #region agent log H1,H2,H4
