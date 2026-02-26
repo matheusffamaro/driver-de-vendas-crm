@@ -56,10 +56,18 @@ class WhatsappMessageService
         }
 
         try {
+            $sendToJid = $this->resolveSendJid($conversation);
+            if (!$sendToJid) {
+                return [
+                    'success' => false,
+                    'message' => 'Não foi possível enviar: contato com identificador temporário (LID) sem número de telefone válido.',
+                ];
+            }
+
             $response = Http::timeout($this->timeout)
                 ->post("{$this->serviceUrl}/messages/send/text", [
                     'sessionId' => $session->id,
-                    'to' => $conversation->remote_jid,
+                    'to' => $sendToJid,
                     'text' => $content,
                 ]);
 
@@ -123,6 +131,14 @@ class WhatsappMessageService
         }
 
         try {
+            $sendToJid = $this->resolveSendJid($conversation);
+            if (!$sendToJid) {
+                return [
+                    'success' => false,
+                    'message' => 'Não foi possível enviar: contato com identificador temporário (LID) sem número de telefone válido.',
+                ];
+            }
+
             // Read file and convert to base64
             $fileContent = file_get_contents($file->getRealPath());
             $base64 = base64_encode($fileContent);
@@ -130,7 +146,7 @@ class WhatsappMessageService
             $response = Http::timeout($this->mediaTimeout)
                 ->post("{$this->serviceUrl}/messages/send/media", [
                     'sessionId' => $session->id,
-                    'to' => $conversation->remote_jid,
+                    'to' => $sendToJid,
                     'type' => $messageType,
                     'media' => $base64,
                     'mimetype' => $file->getMimeType(),
@@ -315,6 +331,36 @@ class WhatsappMessageService
                 'message' => 'Error fetching history: ' . $e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * Resolve the JID to use for sending, handling LID JIDs by falling back to contact_phone.
+     */
+    private function resolveSendJid(WhatsappConversation $conversation): ?string
+    {
+        $jid = $conversation->remote_jid;
+
+        if (!str_ends_with($jid, '@lid')) {
+            return $jid;
+        }
+
+        $contactPhone = preg_replace('/\D/', '', $conversation->contact_phone ?? '');
+        if (strlen($contactPhone) >= 10) {
+            $resolved = $contactPhone . '@s.whatsapp.net';
+            Log::info('Resolved LID to phone for sending', [
+                'conversationId' => $conversation->id,
+                'originalJid' => $jid,
+                'resolvedJid' => $resolved,
+            ]);
+            return $resolved;
+        }
+
+        Log::error('Cannot send to LID JID - no valid phone number available', [
+            'conversationId' => $conversation->id,
+            'remoteJid' => $jid,
+            'contactPhone' => $conversation->contact_phone,
+        ]);
+        return null;
     }
 
     /**

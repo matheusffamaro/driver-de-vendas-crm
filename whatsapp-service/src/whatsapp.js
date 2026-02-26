@@ -903,8 +903,12 @@ class WhatsAppManager {
   }
 
   formatJid(phoneNumber) {
-    const cleaned = phoneNumber.replace(/\D/g, '');
     if (phoneNumber.includes('@g.us')) return phoneNumber;
+    if (phoneNumber.endsWith('@s.whatsapp.net')) return phoneNumber;
+    if (this.isLidJid(phoneNumber)) {
+      throw new Error(`Cannot send message to LID JID: ${phoneNumber}. LID must be resolved to a phone number first.`);
+    }
+    const cleaned = phoneNumber.replace(/\D/g, '');
     return `${cleaned}@s.whatsapp.net`;
   }
 

@@ -672,9 +672,18 @@ class WhatsappController extends Controller
                 if ($existingByName) {
                     $conversation = $existingByName;
                     $dedupApplied = true;
-                    // Consolidate: use this conversation and update remote_jid so future messages with this jid find it directly
+
+                    $incomingIsLid = str_ends_with($remoteJid, '@lid');
+                    $existingIsPhone = str_ends_with($conversation->remote_jid, '@s.whatsapp.net');
+
+                    // Only update remote_jid if the new JID is a phone JID or the existing one is also a LID.
+                    // Never overwrite a valid phone JID with a LID JID.
+                    $newRemoteJid = ($incomingIsLid && $existingIsPhone)
+                        ? $conversation->remote_jid
+                        : $remoteJid;
+
                     $updatePayload = [
-                        'remote_jid' => $remoteJid,
+                        'remote_jid' => $newRemoteJid,
                         'contact_phone' => $isGroup ? null : $phoneNumber,
                         'contact_name' => $contactName,
                         'profile_picture' => $data['profilePicture'] ?? $conversation->profile_picture,
@@ -719,9 +728,11 @@ class WhatsappController extends Controller
                         $conversation = $existingByPhone;
                         $dedupApplied = true;
                         
-                        // Update with correct JID for future matches
+                        $incomingIsLid = str_ends_with($remoteJid, '@lid');
+                        $existingIsPhone = str_ends_with($conversation->remote_jid, '@s.whatsapp.net');
+
                         $updatePayload = [
-                            'remote_jid' => $remoteJid,
+                            'remote_jid' => ($incomingIsLid && $existingIsPhone) ? $conversation->remote_jid : $remoteJid,
                             'contact_phone' => $phoneNumber,
                             'last_message_at' => now(),
                         ];
@@ -1056,10 +1067,31 @@ class WhatsappController extends Controller
                 'response' => substr($aiResponse, 0, 100),
             ]);
 
+            // Resolve LID JID to phone number before sending
+            $sendToJid = $conversation->remote_jid;
+            if (str_ends_with($sendToJid, '@lid')) {
+                $contactPhone = preg_replace('/\D/', '', $conversation->contact_phone ?? '');
+                if (strlen($contactPhone) >= 10) {
+                    $sendToJid = $contactPhone . '@s.whatsapp.net';
+                    Log::info('AI Agent: Resolved LID to phone for sending', [
+                        'conversationId' => $conversation->id,
+                        'originalJid' => $conversation->remote_jid,
+                        'resolvedJid' => $sendToJid,
+                    ]);
+                } else {
+                    Log::error('AI Agent: Cannot send to LID JID - no valid phone number available', [
+                        'conversationId' => $conversation->id,
+                        'remoteJid' => $sendToJid,
+                        'contactPhone' => $conversation->contact_phone,
+                    ]);
+                    return;
+                }
+            }
+
             // Send response via WhatsApp service (correct endpoint)
             $response = Http::timeout(30)->post("{$this->serviceUrl}/messages/send/text", [
                 'sessionId' => $session->id,
-                'to' => $conversation->remote_jid,
+                'to' => $sendToJid,
                 'text' => $aiResponse,
             ]);
 
@@ -1509,6 +1541,25 @@ class WhatsappController extends Controller
         ]);
 
         try {
+            // Resolve LID JID to phone number before sending
+            $sendToJid = $conversation->remote_jid;
+            if (str_ends_with($sendToJid, '@lid')) {
+                $contactPhone = preg_replace('/\D/', '', $conversation->contact_phone ?? '');
+                if (strlen($contactPhone) >= 10) {
+                    $sendToJid = $contactPhone . '@s.whatsapp.net';
+                    Log::info('Resolved LID to phone for manual send', [
+                        'conversationId' => $conversation->id,
+                        'originalJid' => $conversation->remote_jid,
+                        'resolvedJid' => $sendToJid,
+                    ]);
+                } else {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Não foi possível enviar: o contato está registrado com um identificador temporário (LID) e não possui número de telefone válido.',
+                    ], 422);
+                }
+            }
+
             $messageType = $request->type;
             $content = $request->content;
             $response = null;
@@ -1517,7 +1568,7 @@ class WhatsappController extends Controller
                 // Send text message
                 $payload = [
                     'sessionId' => $sessionId,
-                    'to' => $conversation->remote_jid,
+                    'to' => $sendToJid,
                     'text' => $content,
                 ];
                 $response = Http::timeout($this->timeout)->post("{$this->serviceUrl}/messages/send/text", $payload);
@@ -1539,7 +1590,7 @@ class WhatsappController extends Controller
 
                 $payload = [
                     'sessionId' => $sessionId,
-                    'to' => $conversation->remote_jid,
+                    'to' => $sendToJid,
                     'type' => $messageType,
                     'media' => $base64,
                     'mimetype' => $mimetype,
