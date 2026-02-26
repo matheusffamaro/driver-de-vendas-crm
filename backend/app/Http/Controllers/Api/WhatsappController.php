@@ -863,6 +863,9 @@ class WhatsappController extends Controller
             $globalCount = \Cache::get($globalRateKey, 0);
             if ($globalCount >= 30) {
                 Log::debug('AI Agent: Global rate limit reached', ['sessionId' => $session->id, 'count' => $globalCount]);
+                // #region agent log H3
+                $logData = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:866','message'=>'STOPPED: Rate limit','data'=>['session_id'=>$session->id,'global_count'=>$globalCount,'max'=>30],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H3'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData,FILE_APPEND);
+                // #endregion
                 return;
             }
             
@@ -875,6 +878,9 @@ class WhatsappController extends Controller
             // If we responded less than 2 seconds ago, skip (let messages accumulate)
             if ($timeSinceLastResponse < 2) {
                 Log::debug('AI Agent: Debouncing, waiting for more messages', ['conversationId' => $conversation->id]);
+                // #region agent log H3
+                $logData = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:878','message'=>'STOPPED: Debounce','data'=>['conversation_id'=>$conversation->id,'time_since_last'=>$timeSinceLastResponse,'threshold'=>2],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H3'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData,FILE_APPEND);
+                // #endregion
                 return;
             }
 
@@ -897,6 +903,9 @@ class WhatsappController extends Controller
                     'conversationId' => $conversation->id,
                     'sessionId' => $session->id,
                 ]);
+                // #region agent log H3
+                $logData = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:900','message'=>'STOPPED: Handoff active','data'=>['conversation_id'=>$conversation->id,'session_id'=>$session->id,'has_human_message'=>true],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H3'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData,FILE_APPEND);
+                // #endregion
                 return;
             }
 
