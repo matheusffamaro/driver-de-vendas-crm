@@ -116,10 +116,6 @@ class WhatsappWebhookService
         $remoteJid = $data['from'];
         $isGroup = $data['isGroup'] ?? str_ends_with($remoteJid, '@g.us');
 
-        // #region agent log H1,H2,H3,H5
-        $logData = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappWebhookService.php:115','message'=>'handleMessageEvent','data'=>['session_id'=>$session->id,'session_phone'=>$session->phone_number,'remote_jid'=>$remoteJid,'fromMe'=>$fromMe,'isGroup'=>$isGroup,'type'=>$messageType,'pushName'=>$data['pushName']??null,'senderName'=>$data['senderName']??null],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H1,H2,H3,H5'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData,FILE_APPEND);
-        // #endregion
-
         Log::info('Processing message', [
             'sessionId' => $session->id,
             'from' => $remoteJid,
@@ -138,10 +134,6 @@ class WhatsappWebhookService
             $isGroup,
             $contactData
         );
-        
-        // #region agent log H1,H2,H4
-        $logData2 = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappWebhookService.php:136','message'=>'Conversation found/created','data'=>['conversation_id'=>$conversation?->id,'conversation_contact'=>$conversation?->contact_name,'conversation_phone'=>$conversation?->contact_phone,'conversation_jid'=>$conversation?->remote_jid,'fromMe'=>$fromMe,'created_new'=>false],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H1,H2,H4'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData2,FILE_APPEND);
-        // #endregion
 
         if (!$conversation) {
             return;
@@ -293,9 +285,6 @@ class WhatsappWebhookService
             }
 
             if (!$conversation) {
-                // #region agent log H1,H4
-                $logData = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappWebhookService.php:295','message'=>'Creating NEW conversation','data'=>['session_id'=>$session->id,'remote_jid'=>$remoteJid,'contact_phone'=>$contactData['phone_number']??null,'contact_name'=>$contactData['contact_name']??null,'DUPLICATE_CREATED'=>true],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H1,H4'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData,FILE_APPEND);
-                // #endregion
                 return $this->createNewConversation($session, $remoteJid, $isGroup, $contactData);
             }
 
@@ -303,9 +292,6 @@ class WhatsappWebhookService
                 return $this->restoreConversation($conversation, $session, $isGroup, $contactData);
             }
 
-            // #region agent log H1,H4
-            $logData2 = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappWebhookService.php:303','message'=>'Updating EXISTING conversation','data'=>['conversation_id'=>$conversation->id,'conversation_contact'=>$conversation->contact_name,'conversation_phone'=>$conversation->contact_phone,'conversation_jid'=>$conversation->remote_jid],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H1,H4'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData2,FILE_APPEND);
-            // #endregion
             return $this->updateExistingConversation($conversation, $session, $isGroup, $contactData);
 
         } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {

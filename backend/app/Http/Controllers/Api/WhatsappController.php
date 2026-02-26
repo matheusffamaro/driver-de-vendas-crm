@@ -630,10 +630,6 @@ class WhatsappController extends Controller
         $remoteJid = $data['from'];
         $isGroup = $data['isGroup'] ?? str_ends_with($remoteJid, '@g.us');
         
-        // #region agent log H1,H2,H5
-        $logData = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:607','message'=>'handleIncomingMessage START','data'=>['session_id'=>$session->id,'session_phone'=>$session->phone_number,'remote_jid'=>$remoteJid,'fromMe'=>$fromMe,'isGroup'=>$isGroup,'type'=>$messageType,'pushName'=>$data['pushName']??null],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H1,H2,H5'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData,FILE_APPEND);
-        // #endregion
-        
         Log::info('Processing message', [
             'sessionId' => $session->id,
             'from' => $remoteJid,
@@ -655,10 +651,6 @@ class WhatsappController extends Controller
             // For outgoing messages (fromMe), pushName is OUR name, not the contact's name
             $contactName = !$fromMe ? ($data['pushName'] ?? null) : null;
         }
-        
-        // #region agent log H1,H2
-        $logData2 = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:653','message'=>'Extracted contact data','data'=>['fromMe'=>$fromMe,'contactName'=>$contactName,'phoneNumber'=>$phoneNumber,'remote_jid'=>$remoteJid,'BUG_contactName_is_null_for_fromMe'=>($fromMe && $contactName === null)],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H1,H2'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData2,FILE_APPEND);
-        // #endregion
 
         // Find or create conversation using try-catch to handle race conditions
         // Use withTrashed() to find soft deleted conversations and restore them
@@ -678,9 +670,6 @@ class WhatsappController extends Controller
                     ->where('contact_name', $nameForMatch)
                     ->first();
                 if ($existingByName) {
-                    // #region agent log H1
-                    $logData3 = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:680','message'=>'Found existing by NAME','data'=>['existing_conv_id'=>$existingByName->id,'existing_jid'=>$existingByName->remote_jid,'new_jid'=>$remoteJid,'contact_name'=>$nameForMatch],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H1'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData3,FILE_APPEND);
-                    // #endregion
                     $conversation = $existingByName;
                     $dedupApplied = true;
                     // Consolidate: use this conversation and update remote_jid so future messages with this jid find it directly
@@ -727,10 +716,6 @@ class WhatsappController extends Controller
                         });
                     
                     if ($existingByPhone) {
-                        // #region agent log H1,H2
-                        $logData5 = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:720','message'=>'Found existing by PHONE (fromMe fix)','data'=>['existing_conv_id'=>$existingByPhone->id,'existing_jid'=>$existingByPhone->remote_jid,'existing_name'=>$existingByPhone->contact_name,'new_jid'=>$remoteJid,'normalized_phone'=>$normalizedPhone,'FIX_APPLIED'=>true],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H1,H2'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData5,FILE_APPEND);
-                        // #endregion
-                        
                         $conversation = $existingByPhone;
                         $dedupApplied = true;
                         
@@ -758,10 +743,6 @@ class WhatsappController extends Controller
             }
 
             if (!$conversation) {
-                // #region agent log H1,H2,H4
-                $logData4 = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:705','message'=>'CREATING NEW conversation (DUPLICATE!)','data'=>['session_id'=>$session->id,'remote_jid'=>$remoteJid,'fromMe'=>$fromMe,'contactName'=>$contactName,'phoneNumber'=>$phoneNumber,'BUG_REASON'=>$fromMe ? 'fromMe=true, contactName=null, no dedup' : 'other'],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H1,H2,H4'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData4,FILE_APPEND);
-                // #endregion
-                
                 // For groups, use groupName (from metadata), not pushName (sender's name)
                 $groupDisplayName = $isGroup ? ($data['groupName'] ?? 'Grupo') : null;
                 
@@ -920,9 +901,6 @@ class WhatsappController extends Controller
      */
     private function processAiAgentResponse(WhatsappSession $session, WhatsappConversation $conversation, string $messageText): void
     {
-        // #region agent log H2,H3,H4
-        $logData = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:854','message'=>'processAiAgentResponse (Controller) called','data'=>['session_id'=>$session->id,'session_phone'=>$session->phone_number,'conversation_id'=>$conversation->id,'conversation_contact'=>$conversation->contact_name],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H2,H3,H4'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData,FILE_APPEND);
-        // #endregion
         
         try {
             // Global rate limit - max 30 AI requests per minute per session (Groq allows 30 RPM)
@@ -930,9 +908,6 @@ class WhatsappController extends Controller
             $globalCount = \Cache::get($globalRateKey, 0);
             if ($globalCount >= 30) {
                 Log::debug('AI Agent: Global rate limit reached', ['sessionId' => $session->id, 'count' => $globalCount]);
-                // #region agent log H3
-                $logData = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:866','message'=>'STOPPED: Rate limit','data'=>['session_id'=>$session->id,'global_count'=>$globalCount,'max'=>30],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H3'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData,FILE_APPEND);
-                // #endregion
                 return;
             }
             
@@ -945,9 +920,6 @@ class WhatsappController extends Controller
             // If we responded less than 2 seconds ago, skip (let messages accumulate)
             if ($timeSinceLastResponse < 2) {
                 Log::debug('AI Agent: Debouncing, waiting for more messages', ['conversationId' => $conversation->id]);
-                // #region agent log H3
-                $logData = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:878','message'=>'STOPPED: Debounce','data'=>['conversation_id'=>$conversation->id,'time_since_last'=>$timeSinceLastResponse,'threshold'=>2],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H3'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData,FILE_APPEND);
-                // #endregion
                 return;
             }
 
@@ -970,9 +942,6 @@ class WhatsappController extends Controller
                     'conversationId' => $conversation->id,
                     'sessionId' => $session->id,
                 ]);
-                // #region agent log H3
-                $logData = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:900','message'=>'STOPPED: Handoff active','data'=>['conversation_id'=>$conversation->id,'session_id'=>$session->id,'has_human_message'=>true],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H3'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData,FILE_APPEND);
-                // #endregion
                 return;
             }
 
@@ -988,25 +957,16 @@ class WhatsappController extends Controller
                 })
                 ->first();
 
-            // #region agent log H2,H4,H5
-            $logData2 = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:910','message'=>'First AI agent query result','data'=>['agent_found'=>!is_null($aiAgent),'agent_id'=>$aiAgent?->id,'agent_name'=>$aiAgent?->name,'agent_is_active'=>$aiAgent?->is_active,'agent_whatsapp_session_id'=>$aiAgent?->whatsapp_session_id,'current_session_id'=>$session->id],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H2,H4,H5'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData2,FILE_APPEND);
-            // #endregion
 
             if (!$aiAgent) {
                 $aiAgent = \App\Models\AiChatAgent::with('documents')
                     ->where('is_active', true)
                     ->first();
                 
-                // #region agent log H2,H4,H5
-                $logData3 = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:915','message'=>'FALLBACK: Using ANY active agent','data'=>['fallback_agent_found'=>!is_null($aiAgent),'agent_id'=>$aiAgent?->id,'agent_name'=>$aiAgent?->name,'agent_whatsapp_session_id'=>$aiAgent?->whatsapp_session_id,'agent_tenant_id'=>$aiAgent?->tenant_id,'current_session_id'=>$session->id,'current_tenant_id'=>$session->tenant_id,'BUG_DETECTED'=>!is_null($aiAgent)],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H2,H4,H5'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData3,FILE_APPEND);
-                // #endregion
             }
 
             if (!$aiAgent) {
                 Log::debug('AI Agent not active for session', ['sessionId' => $session->id]);
-                // #region agent log H5
-                $logData4 = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:919','message'=>'No AI agent found, stopping','data'=>['session_id'=>$session->id],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H5'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData4,FILE_APPEND);
-                // #endregion
                 return;
             }
 
@@ -1040,9 +1000,6 @@ class WhatsappController extends Controller
             \Cache::put($debounceKey, now()->timestamp, 60);
             \Cache::put($globalRateKey, $globalCount + 1, 60);
 
-            // #region agent log H2,H4
-            $logData5 = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:952','message'=>'Controller: About to generate AI response','data'=>['session_id'=>$session->id,'conversation_id'=>$conversation->id,'agent_id'=>$aiAgent->id,'agent_name'=>$aiAgent->name,'agent_whatsapp_session_id'=>$aiAgent->whatsapp_session_id,'will_respond'=>true,'RESPONDING_VIA_CONTROLLER'=>true],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H2,H4'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData5,FILE_APPEND);
-            // #endregion
 
             Log::info('AI Agent processing message', [
                 'sessionId' => $session->id,
@@ -1667,9 +1624,6 @@ class WhatsappController extends Controller
             ->where('is_group', false)
             ->get();
         
-        // #region agent log H3,H4
-        $logData = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:1597','message'=>'mergeDuplicateConversationsInSession START','data'=>['session_id'=>$sessionId,'total_conversations'=>$conversations->count(),'conversations'=>$conversations->map(fn($c)=>['id'=>$c->id,'contact_name'=>$c->contact_name,'contact_phone'=>$c->contact_phone,'remote_jid'=>$c->remote_jid,'msg_count'=>$c->messages()->count()])->values()->all()],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H3,H4'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData,FILE_APPEND);
-        // #endregion
         
         if ($conversations->isEmpty()) {
             return 0;
@@ -1771,9 +1725,6 @@ class WhatsappController extends Controller
             }
         }
         
-        // #region agent log H3,H4
-        $logData2 = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:1701','message'=>'mergeDuplicateConversationsInSession END','data'=>['session_id'=>$sessionId,'merged_count'=>$merged,'byRoot_count'=>count($byRoot)],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H3,H4'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData2,FILE_APPEND);
-        // #endregion
         
         return $merged;
     }
@@ -1786,9 +1737,6 @@ class WhatsappController extends Controller
         // SECURITY: Verify tenant ownership
         $session = $this->getSessionForTenant($sessionId, $request->user()->tenant_id);
 
-        // #region agent log H3,H4
-        $logData = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:1707','message'=>'syncSession button clicked','data'=>['session_id'=>$sessionId,'session_phone'=>$session->phone_number,'tenant_id'=>$session->tenant_id],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H3,H4'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData,FILE_APPEND);
-        // #endregion
 
         try {
             $response = Http::post(config('services.whatsapp.url') . "/sessions/{$sessionId}/sync");
