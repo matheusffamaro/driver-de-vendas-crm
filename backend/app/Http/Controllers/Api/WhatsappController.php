@@ -630,6 +630,10 @@ class WhatsappController extends Controller
         $remoteJid = $data['from'];
         $isGroup = $data['isGroup'] ?? str_ends_with($remoteJid, '@g.us');
         
+        // #region agent log H1,H2,H5
+        $logData = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:607','message'=>'handleIncomingMessage START','data'=>['session_id'=>$session->id,'session_phone'=>$session->phone_number,'remote_jid'=>$remoteJid,'fromMe'=>$fromMe,'isGroup'=>$isGroup,'type'=>$messageType,'pushName'=>$data['pushName']??null],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H1,H2,H5'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData,FILE_APPEND);
+        // #endregion
+        
         Log::info('Processing message', [
             'sessionId' => $session->id,
             'from' => $remoteJid,
@@ -651,6 +655,10 @@ class WhatsappController extends Controller
             // For outgoing messages (fromMe), pushName is OUR name, not the contact's name
             $contactName = !$fromMe ? ($data['pushName'] ?? null) : null;
         }
+        
+        // #region agent log H1,H2
+        $logData2 = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:653','message'=>'Extracted contact data','data'=>['fromMe'=>$fromMe,'contactName'=>$contactName,'phoneNumber'=>$phoneNumber,'remote_jid'=>$remoteJid,'BUG_contactName_is_null_for_fromMe'=>($fromMe && $contactName === null)],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H1,H2'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData2,FILE_APPEND);
+        // #endregion
 
         // Find or create conversation using try-catch to handle race conditions
         // Use withTrashed() to find soft deleted conversations and restore them
@@ -670,6 +678,9 @@ class WhatsappController extends Controller
                     ->where('contact_name', $nameForMatch)
                     ->first();
                 if ($existingByName) {
+                    // #region agent log H1
+                    $logData3 = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:680','message'=>'Found existing by NAME','data'=>['existing_conv_id'=>$existingByName->id,'existing_jid'=>$existingByName->remote_jid,'new_jid'=>$remoteJid,'contact_name'=>$nameForMatch],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H1'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData3,FILE_APPEND);
+                    // #endregion
                     $conversation = $existingByName;
                     $dedupApplied = true;
                     // Consolidate: use this conversation and update remote_jid so future messages with this jid find it directly
@@ -695,6 +706,10 @@ class WhatsappController extends Controller
             }
 
             if (!$conversation) {
+                // #region agent log H1,H2,H4
+                $logData4 = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:705','message'=>'CREATING NEW conversation (DUPLICATE!)','data'=>['session_id'=>$session->id,'remote_jid'=>$remoteJid,'fromMe'=>$fromMe,'contactName'=>$contactName,'phoneNumber'=>$phoneNumber,'BUG_REASON'=>$fromMe ? 'fromMe=true, contactName=null, no dedup' : 'other'],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H1,H2,H4'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData4,FILE_APPEND);
+                // #endregion
+                
                 // For groups, use groupName (from metadata), not pushName (sender's name)
                 $groupDisplayName = $isGroup ? ($data['groupName'] ?? 'Grupo') : null;
                 
