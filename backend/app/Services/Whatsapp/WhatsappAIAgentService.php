@@ -30,9 +30,6 @@ class WhatsappAIAgentService
         WhatsappConversation $conversation,
         string $messageText
     ): void {
-        // #region agent log Via7-H1
-        $logData = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappAIAgentService.php:28','message'=>'processAutoResponse CALLED','data'=>['session_id'=>$session->id,'session_phone'=>$session->phone_number,'conversation_id'=>$conversation->id,'conversation_contact'=>$conversation->contact_name,'tenant_id'=>$session->tenant_id,'config_enabled'=>config('whatsapp.ai_agent.enabled')],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'Via7-H1'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData,FILE_APPEND);
-        // #endregion
         
         if (!config('whatsapp.ai_agent.enabled')) {
             return;
@@ -56,9 +53,6 @@ class WhatsappAIAgentService
 
             $aiAgent = $this->getActiveAIAgent($session);
             
-            // #region agent log Via7-H1,H3
-            $logData2 = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappAIAgentService.php:54','message'=>'getActiveAIAgent result','data'=>['session_id'=>$session->id,'agent_found'=>!is_null($aiAgent),'agent_id'=>$aiAgent?->id,'agent_name'=>$aiAgent?->name,'agent_is_active'=>$aiAgent?->is_active,'agent_session_id'=>$aiAgent?->whatsapp_session_id],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'Via7-H1,H3'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData2,FILE_APPEND);
-            // #endregion
             
             if (!$aiAgent) {
                 Log::debug('AI Agent not active for session', ['sessionId' => $session->id]);

@@ -18,14 +18,27 @@ foreach ($possiblePhones as $phone) {
         echo "   Status: {$session->status}\n";
         echo "   Tenant ID: {$session->tenant_id}\n\n";
         
-        // Buscar IA agent para esta sessão
+        // Buscar IA agent usando MESMA lógica do WhatsappAIAgentService
         echo "🤖 AGENTES DE IA PARA ESTA SESSÃO:\n\n";
         
-        $agents = \App\Models\AiChatAgent::where(function($q) use ($session) {
-            $q->where('whatsapp_session_id', $session->id)
-              ->orWhere('whatsapp_session_id', $session->tenant_id)
-              ->orWhereNull('whatsapp_session_id');
-        })->get();
+        $tenantId = $session->tenant_id;
+        $agents = \App\Models\AiChatAgent::withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->where('is_active', true)
+            ->where('whatsapp_session_id', '!=', 'none')
+            ->where(function ($q) use ($session) {
+                $q->where('whatsapp_session_id', $session->id)
+                    ->orWhereNull('whatsapp_session_id');
+            })
+            ->get();
+        
+        echo "Filtros aplicados:\n";
+        echo "   tenant_id = {$tenantId}\n";
+        echo "   is_active = true\n";
+        echo "   whatsapp_session_id != 'none'\n";
+        echo "   (whatsapp_session_id = {$session->id} OR IS NULL)\n\n";
+        
+        echo "Total encontrado: " . $agents->count() . "\n\n";
         
         foreach ($agents as $agent) {
             echo "📋 Agente: {$agent->name}\n";
