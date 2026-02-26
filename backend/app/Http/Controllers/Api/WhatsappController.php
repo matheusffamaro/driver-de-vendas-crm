@@ -1599,6 +1599,11 @@ class WhatsappController extends Controller
         $conversations = WhatsappConversation::where('session_id', $sessionId)
             ->where('is_group', false)
             ->get();
+        
+        // #region agent log H3,H4
+        $logData = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:1597','message'=>'mergeDuplicateConversationsInSession START','data'=>['session_id'=>$sessionId,'total_conversations'=>$conversations->count(),'conversations'=>$conversations->map(fn($c)=>['id'=>$c->id,'contact_name'=>$c->contact_name,'contact_phone'=>$c->contact_phone,'remote_jid'=>$c->remote_jid,'msg_count'=>$c->messages()->count()])->values()->all()],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H3,H4'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData,FILE_APPEND);
+        // #endregion
+        
         if ($conversations->isEmpty()) {
             return 0;
         }
@@ -1698,6 +1703,11 @@ class WhatsappController extends Controller
                 $keep->update(['assigned_user_id' => $session->user_id]);
             }
         }
+        
+        // #region agent log H3,H4
+        $logData2 = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:1701','message'=>'mergeDuplicateConversationsInSession END','data'=>['session_id'=>$sessionId,'merged_count'=>$merged,'byRoot_count'=>count($byRoot)],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H3,H4'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData2,FILE_APPEND);
+        // #endregion
+        
         return $merged;
     }
 
@@ -1708,6 +1718,10 @@ class WhatsappController extends Controller
     {
         // SECURITY: Verify tenant ownership
         $session = $this->getSessionForTenant($sessionId, $request->user()->tenant_id);
+
+        // #region agent log H3,H4
+        $logData = json_encode(['sessionId'=>'09ce68','location'=>'WhatsappController.php:1707','message'=>'syncSession button clicked','data'=>['session_id'=>$sessionId,'session_phone'=>$session->phone_number,'tenant_id'=>$session->tenant_id],'timestamp'=>round(microtime(true)*1000),'hypothesisId'=>'H3,H4'],JSON_UNESCAPED_SLASHES)."\n";@file_put_contents('/var/www/html/storage/logs/debug-09ce68.log',$logData,FILE_APPEND);
+        // #endregion
 
         try {
             $response = Http::post(config('services.whatsapp.url') . "/sessions/{$sessionId}/sync");
