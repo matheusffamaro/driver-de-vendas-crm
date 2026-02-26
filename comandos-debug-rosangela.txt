@@ -1,0 +1,75 @@
+# COMANDOS PARA INVESTIGAR DUPLICAÇÃO ROSÂNGELA GUEDES
+
+# 1️⃣ Verificar se código instrumentado está deployado
+docker exec dv-api grep -n "agent log H1,H2,H3,H5" /var/www/html/app/Services/Whatsapp/WhatsappWebhookService.php
+
+# 2️⃣ Ver TODAS as conversas da sessão CRM Demo (onde está Rosângela)
+docker exec dv-api php -r "
+require '/var/www/html/vendor/autoload.php';
+\$app = require_once '/var/www/html/bootstrap/app.php';
+\$app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
+
+echo '🔍 CONVERSAS DA SESSÃO CRM DEMO (5512991280763):' . PHP_EOL . PHP_EOL;
+
+\$session = \App\Models\WhatsappSession::where('phone_number', '5512991280763')->first();
+if (!\$session) {
+    echo '❌ Sessão não encontrada' . PHP_EOL;
+    exit;
+}
+
+\$conversations = \App\Models\WhatsappConversation::where('session_id', \$session->id)
+    ->where('is_group', false)
+    ->orderBy('created_at', 'desc')
+    ->get();
+
+echo 'Total de conversas: ' . \$conversations->count() . PHP_EOL . PHP_EOL;
+
+foreach (\$conversations as \$conv) {
+    \$msgCount = \App\Models\WhatsappMessage::where('conversation_id', \$conv->id)->count();
+    \$lastMsg = \App\Models\WhatsappMessage::where('conversation_id', \$conv->id)->orderBy('created_at', 'desc')->first();
+    
+    echo '📱 ' . \$conv->contact_name . ' (ID: ' . substr(\$conv->id, 0, 8) . '...)' . PHP_EOL;
+    echo '   Telefone: ' . \$conv->contact_phone . PHP_EOL;
+    echo '   JID: ' . \$conv->remote_jid . PHP_EOL;
+    echo '   Mensagens: ' . \$msgCount . PHP_EOL;
+    echo '   Última msg: ' . (\$lastMsg ? \$lastMsg->created_at : 'nenhuma') . PHP_EOL;
+    echo PHP_EOL;
+}
+"
+
+# 3️⃣ Procurar duplicatas da Rosângela Guedes especificamente
+docker exec dv-api php -r "
+require '/var/www/html/vendor/autoload.php';
+\$app = require_once '/var/www/html/bootstrap/app.php';
+\$app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
+
+echo '🔍 PROCURANDO DUPLICATAS DE ROSÂNGELA GUEDES:' . PHP_EOL . PHP_EOL;
+
+\$session = \App\Models\WhatsappSession::where('phone_number', '5512991280763')->first();
+\$rosangelas = \App\Models\WhatsappConversation::where('session_id', \$session->id)
+    ->where('contact_name', 'like', '%Rosângela%')
+    ->orWhere('contact_name', 'like', '%Rosangela%')
+    ->get();
+
+if (\$rosangelas->isEmpty()) {
+    echo '✅ Nenhuma conversa encontrada para Rosângela' . PHP_EOL;
+} else {
+    echo '📊 Total de conversas da Rosângela: ' . \$rosangelas->count() . PHP_EOL . PHP_EOL;
+    
+    foreach (\$rosangelas as \$conv) {
+        \$msgCount = \App\Models\WhatsappMessage::where('conversation_id', \$conv->id)->count();
+        echo '📱 ' . \$conv->contact_name . PHP_EOL;
+        echo '   ID: ' . \$conv->id . PHP_EOL;
+        echo '   Telefone: ' . \$conv->contact_phone . PHP_EOL;
+        echo '   JID: ' . \$conv->remote_jid . PHP_EOL;
+        echo '   Mensagens: ' . \$msgCount . PHP_EOL;
+        echo '   ---' . PHP_EOL;
+    }
+    
+    if (\$rosangelas->count() > 1) {
+        echo PHP_EOL . '⚠️  DUPLICATA DETECTADA!' . PHP_EOL;
+    } else {
+        echo PHP_EOL . '✅ Sem duplicatas' . PHP_EOL;
+    }
+}
+"
