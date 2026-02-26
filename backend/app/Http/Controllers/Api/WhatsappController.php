@@ -946,27 +946,19 @@ class WhatsappController extends Controller
             }
 
             // Check if AI Agent is active for this session
-            // 1) Match this session OR global (null). Also accept legacy value 'default'.
-            // 2) If nothing matches, fallback to any active agent (useful when session was recreated).
+            // SECURITY FIX: Filter by tenant_id to prevent cross-tenant agent usage
             $aiAgent = \App\Models\AiChatAgent::with('documents')
+                ->where('tenant_id', $session->tenant_id)
                 ->where('is_active', true)
+                ->where('whatsapp_session_id', '!=', 'none')
                 ->where(function ($q) use ($session) {
                     $q->where('whatsapp_session_id', $session->id)
-                        ->orWhereNull('whatsapp_session_id')
-                        ->orWhere('whatsapp_session_id', 'default');
+                        ->orWhereNull('whatsapp_session_id');
                 })
                 ->first();
 
-
             if (!$aiAgent) {
-                $aiAgent = \App\Models\AiChatAgent::with('documents')
-                    ->where('is_active', true)
-                    ->first();
-                
-            }
-
-            if (!$aiAgent) {
-                Log::debug('AI Agent not active for session', ['sessionId' => $session->id]);
+                Log::debug('AI Agent not active for session', ['sessionId' => $session->id, 'tenantId' => $session->tenant_id]);
                 return;
             }
 
