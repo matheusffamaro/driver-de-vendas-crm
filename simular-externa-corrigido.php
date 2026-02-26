@@ -35,7 +35,7 @@ $webhookData = [
 echo "📤 Webhook (fromMe=true):\n";
 echo "   JID: 5512988315292@s.whatsapp.net\n";
 echo "   fromMe: true\n";
-echo "   text: " . $webhookData['data']['text'] . "\n\n";
+echo "   text: " . $webhookData['text'] . "\n\n";
 
 // Processar webhook
 $webhookService = app(\App\Services\Whatsapp\WhatsappWebhookService::class);
