@@ -692,7 +692,21 @@ class WhatsAppManager {
     if (!session || session.status !== 'connected') {
       throw new Error('Session not connected');
     }
-    const jid = this.formatJid(to);
+
+    let jid = to;
+    if (this.isLidJid(to)) {
+      const resolvedJid = this.resolveLidToPhoneJid(sessionId, to);
+      if (resolvedJid) {
+        logger.info(`sendTextMessage: Resolved LID ${to} -> ${resolvedJid}`);
+        jid = resolvedJid;
+      } else {
+        logger.info(`sendTextMessage: Sending directly to LID ${to}`);
+        jid = to;
+      }
+    } else {
+      jid = this.formatJid(to);
+    }
+
     const result = await session.socket.sendMessage(jid, { text });
     return { messageId: result.key.id, to: jid, status: 'sent' };
   }
@@ -905,9 +919,7 @@ class WhatsAppManager {
   formatJid(phoneNumber) {
     if (phoneNumber.includes('@g.us')) return phoneNumber;
     if (phoneNumber.endsWith('@s.whatsapp.net')) return phoneNumber;
-    if (this.isLidJid(phoneNumber)) {
-      throw new Error(`Cannot send message to LID JID: ${phoneNumber}. LID must be resolved to a phone number first.`);
-    }
+    if (this.isLidJid(phoneNumber)) return phoneNumber;
     const cleaned = phoneNumber.replace(/\D/g, '');
     return `${cleaned}@s.whatsapp.net`;
   }

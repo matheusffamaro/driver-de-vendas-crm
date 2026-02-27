@@ -639,16 +639,26 @@ class WhatsappController extends Controller
         ]);
         
         // For groups, extract phone from participant; for individuals, from remoteJid
+        $isUnresolvedLid = !empty($data['unresolvedLid']);
+        
         if ($isGroup) {
             $phoneNumber = $data['senderPhone'] ?? preg_replace('/@(s\.whatsapp\.net|c\.us)$/', '', $data['participant'] ?? '');
-            // Only get sender name for incoming messages (not fromMe)
             $contactName = !$fromMe ? ($data['senderName'] ?? $data['pushName'] ?? null) : null;
         } else {
-            // Strip @s.whatsapp.net, @c.us, @lid so we don't store "number@lid" as contact_phone
+            // Strip JID suffix to get phone number
             $phoneNumber = preg_replace('/@(s\.whatsapp\.net|c\.us|lid)$/i', '', $remoteJid);
             $phoneNumber = trim($phoneNumber);
-            // IMPORTANT: Only use pushName for INCOMING messages
-            // For outgoing messages (fromMe), pushName is OUR name, not the contact's name
+            
+            // If LID was not resolved, the "phone" is actually a LID identifier — don't use it
+            if ($isUnresolvedLid) {
+                Log::warning('Unresolved LID message - contact_phone will be null', [
+                    'remoteJid' => $remoteJid,
+                    'lidAsPhone' => $phoneNumber,
+                    'pushName' => $data['pushName'] ?? null,
+                ]);
+                $phoneNumber = null;
+            }
+            
             $contactName = !$fromMe ? ($data['pushName'] ?? null) : null;
         }
 
@@ -1067,11 +1077,12 @@ class WhatsappController extends Controller
                 'response' => substr($aiResponse, 0, 100),
             ]);
 
-            // Resolve LID JID to phone number before sending
+            // Resolve JID for sending — prefer phone JID, but LID JIDs are also accepted
             $sendToJid = $conversation->remote_jid;
             if (str_ends_with($sendToJid, '@lid')) {
                 $contactPhone = preg_replace('/\D/', '', $conversation->contact_phone ?? '');
-                if (strlen($contactPhone) >= 10) {
+                // Only use contact_phone if it looks like a real phone number (10-15 digits)
+                if (strlen($contactPhone) >= 10 && strlen($contactPhone) <= 15) {
                     $sendToJid = $contactPhone . '@s.whatsapp.net';
                     Log::info('AI Agent: Resolved LID to phone for sending', [
                         'conversationId' => $conversation->id,
@@ -1079,12 +1090,11 @@ class WhatsappController extends Controller
                         'resolvedJid' => $sendToJid,
                     ]);
                 } else {
-                    Log::error('AI Agent: Cannot send to LID JID - no valid phone number available', [
+                    // Send directly to LID — WhatsApp service will handle routing
+                    Log::info('AI Agent: Sending directly to LID JID (no valid phone available)', [
                         'conversationId' => $conversation->id,
                         'remoteJid' => $sendToJid,
-                        'contactPhone' => $conversation->contact_phone,
                     ]);
-                    return;
                 }
             }
 
