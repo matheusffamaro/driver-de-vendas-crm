@@ -334,8 +334,7 @@ class WhatsappMessageService
     }
 
     /**
-     * Resolve the JID to use for sending, handling LID JIDs by falling back to contact_phone
-     * or sending directly to the LID (WhatsApp can route via LID internally).
+     * Resolve the JID to use for sending, handling LID JIDs by falling back to contact_phone.
      */
     private function resolveSendJid(WhatsappConversation $conversation): ?string
     {
@@ -345,9 +344,8 @@ class WhatsappMessageService
             return $jid;
         }
 
-        // Try to use a real phone number if available (10-15 digits = valid phone)
         $contactPhone = preg_replace('/\D/', '', $conversation->contact_phone ?? '');
-        if (strlen($contactPhone) >= 10 && strlen($contactPhone) <= 15) {
+        if (strlen($contactPhone) >= 10) {
             $resolved = $contactPhone . '@s.whatsapp.net';
             Log::info('Resolved LID to phone for sending', [
                 'conversationId' => $conversation->id,
@@ -357,12 +355,12 @@ class WhatsappMessageService
             return $resolved;
         }
 
-        // Fall back to LID JID — WhatsApp service handles routing
-        Log::info('Sending directly to LID JID (no valid phone available)', [
+        Log::error('Cannot send to LID JID - no valid phone number available', [
             'conversationId' => $conversation->id,
             'remoteJid' => $jid,
+            'contactPhone' => $conversation->contact_phone,
         ]);
-        return $jid;
+        return null;
     }
 
     /**

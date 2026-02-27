@@ -385,11 +385,11 @@ class WhatsappAIAgentService
         string $originalMessage
     ): void {
         try {
-            // Resolve JID for sending — prefer phone JID, but LID JIDs are also accepted
+            // Resolve LID JID to phone number before sending
             $sendToJid = $conversation->remote_jid;
             if (str_ends_with($sendToJid, '@lid')) {
                 $contactPhone = preg_replace('/\D/', '', $conversation->contact_phone ?? '');
-                if (strlen($contactPhone) >= 10 && strlen($contactPhone) <= 15) {
+                if (strlen($contactPhone) >= 10) {
                     $sendToJid = $contactPhone . '@s.whatsapp.net';
                     Log::info('AI Agent: Resolved LID to phone for sending', [
                         'conversationId' => $conversation->id,
@@ -397,10 +397,12 @@ class WhatsappAIAgentService
                         'resolvedJid' => $sendToJid,
                     ]);
                 } else {
-                    Log::info('AI Agent: Sending directly to LID JID (no valid phone available)', [
+                    Log::error('AI Agent: Cannot send to LID JID - no valid phone number available', [
                         'conversationId' => $conversation->id,
                         'remoteJid' => $sendToJid,
+                        'contactPhone' => $conversation->contact_phone,
                     ]);
+                    return;
                 }
             }
 

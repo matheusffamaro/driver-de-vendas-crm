@@ -639,26 +639,16 @@ class WhatsappController extends Controller
         ]);
         
         // For groups, extract phone from participant; for individuals, from remoteJid
-        $isUnresolvedLid = !empty($data['unresolvedLid']);
-        
         if ($isGroup) {
             $phoneNumber = $data['senderPhone'] ?? preg_replace('/@(s\.whatsapp\.net|c\.us)$/', '', $data['participant'] ?? '');
+            // Only get sender name for incoming messages (not fromMe)
             $contactName = !$fromMe ? ($data['senderName'] ?? $data['pushName'] ?? null) : null;
         } else {
-            // Strip JID suffix to get phone number
+            // Strip @s.whatsapp.net, @c.us, @lid so we don't store "number@lid" as contact_phone
             $phoneNumber = preg_replace('/@(s\.whatsapp\.net|c\.us|lid)$/i', '', $remoteJid);
             $phoneNumber = trim($phoneNumber);
-            
-            // If LID was not resolved, the "phone" is actually a LID identifier — don't use it
-            if ($isUnresolvedLid) {
-                Log::warning('Unresolved LID message - contact_phone will be null', [
-                    'remoteJid' => $remoteJid,
-                    'lidAsPhone' => $phoneNumber,
-                    'pushName' => $data['pushName'] ?? null,
-                ]);
-                $phoneNumber = null;
-            }
-            
+            // IMPORTANT: Only use pushName for INCOMING messages
+            // For outgoing messages (fromMe), pushName is OUR name, not the contact's name
             $contactName = !$fromMe ? ($data['pushName'] ?? null) : null;
         }
 
@@ -924,51 +914,68 @@ class WhatsappController extends Controller
     {
         
         try {
+            Log::info('AI Agent: === START processing ===', [
+                'sessionId' => $session->id,
+                'conversationId' => $conversation->id,
+                'remoteJid' => $conversation->remote_jid,
+                'contactPhone' => $conversation->contact_phone,
+                'tenantId' => $session->tenant_id,
+                'message' => substr($messageText, 0, 80),
+            ]);
+
             // Global rate limit - max 30 AI requests per minute per session (Groq allows 30 RPM)
             $globalRateKey = "ai_agent_global:{$session->id}";
             $globalCount = \Cache::get($globalRateKey, 0);
             if ($globalCount >= 30) {
-                Log::debug('AI Agent: Global rate limit reached', ['sessionId' => $session->id, 'count' => $globalCount]);
+                Log::info('AI Agent: BLOCKED - Global rate limit reached', ['sessionId' => $session->id, 'count' => $globalCount]);
                 return;
             }
             
             // Short debounce - wait 2 seconds to allow multiple messages to arrive
-            // This groups rapid consecutive messages together
             $debounceKey = "ai_agent_debounce:{$conversation->id}";
             $lastProcessed = \Cache::get($debounceKey);
             $timeSinceLastResponse = $lastProcessed ? (now()->timestamp - $lastProcessed) : 999;
             
-            // If we responded less than 2 seconds ago, skip (let messages accumulate)
             if ($timeSinceLastResponse < 2) {
-                Log::debug('AI Agent: Debouncing, waiting for more messages', ['conversationId' => $conversation->id]);
+                Log::info('AI Agent: BLOCKED - Debouncing', ['conversationId' => $conversation->id, 'timeSince' => $timeSinceLastResponse]);
                 return;
             }
 
-            // HANDOFF: Verificar se há mensagem humana recente (últimos 30min)
-            // Se sim, humano assumiu e IA não deve responder
-            // Refresh conversation para garantir dados atualizados
             $conversation->refresh();
             
-            $hasHumanMessage = WhatsappMessage::where('conversation_id', $conversation->id)
+            // HANDOFF: Check for recent human messages (last 30 min)
+            // Only count messages that have sender_id set (real human from CRM)
+            // Ignore echoed fromMe messages that have no sender_id
+            $humanMessage = WhatsappMessage::where('conversation_id', $conversation->id)
                 ->where('direction', 'outgoing')
                 ->where('created_at', '>=', now()->subMinutes(30))
+                ->where(function ($q) {
+                    $q->whereNotNull('sender_id')
+                        ->orWhere(function ($q2) {
+                            $q2->whereNull('sender_name')
+                                ->whereNull('sender_id');
+                        });
+                })
                 ->where(function ($q) {
                     $q->whereNull('sender_name')
                         ->orWhere('sender_name', '!=', 'AI Agent');
                 })
-                ->exists();
+                ->first();
 
-            if ($hasHumanMessage) {
-                Log::info('AI Agent: Human takeover detected, skipping response', [
+            if ($humanMessage) {
+                Log::info('AI Agent: BLOCKED - Human takeover detected', [
                     'conversationId' => $conversation->id,
-                    'sessionId' => $session->id,
+                    'blockingMessageId' => $humanMessage->id,
+                    'blockingSenderName' => $humanMessage->sender_name,
+                    'blockingSenderId' => $humanMessage->sender_id,
+                    'blockingCreatedAt' => $humanMessage->created_at?->toDateTimeString(),
                 ]);
                 return;
             }
 
             // Check if AI Agent is active for this session
-            // SECURITY FIX: Filter by tenant_id to prevent cross-tenant agent usage
-            $aiAgent = \App\Models\AiChatAgent::with('documents')
+            $aiAgent = \App\Models\AiChatAgent::withoutGlobalScopes()
+                ->with('documents')
                 ->where('tenant_id', $session->tenant_id)
                 ->where('is_active', true)
                 ->where('whatsapp_session_id', '!=', 'none')
@@ -979,13 +986,20 @@ class WhatsappController extends Controller
                 ->first();
 
             if (!$aiAgent) {
-                Log::debug('AI Agent not active for session', ['sessionId' => $session->id, 'tenantId' => $session->tenant_id]);
+                // Log all agents for this tenant to help debug
+                $allAgents = \App\Models\AiChatAgent::withoutGlobalScopes()
+                    ->where('tenant_id', $session->tenant_id)
+                    ->get(['id', 'name', 'is_active', 'whatsapp_session_id']);
+                Log::info('AI Agent: BLOCKED - No matching agent found', [
+                    'sessionId' => $session->id,
+                    'tenantId' => $session->tenant_id,
+                    'allAgentsForTenant' => $allAgents->toArray(),
+                ]);
                 return;
             }
 
-            // Check if message is empty
             if (empty(trim($messageText))) {
-                Log::debug('AI Agent: Empty message, skipping');
+                Log::info('AI Agent: BLOCKED - Empty message');
                 return;
             }
 
@@ -1032,7 +1046,7 @@ class WhatsappController extends Controller
                 }
             }
 
-            Log::debug('AI Agent knowledge base loaded', ['documentsCount' => $docsCount]);
+            Log::info('AI Agent knowledge base loaded', ['documentsCount' => $docsCount]);
 
             // Build instructions
             $instructions = [
@@ -1077,12 +1091,11 @@ class WhatsappController extends Controller
                 'response' => substr($aiResponse, 0, 100),
             ]);
 
-            // Resolve JID for sending — prefer phone JID, but LID JIDs are also accepted
+            // Resolve LID JID to phone number before sending
             $sendToJid = $conversation->remote_jid;
             if (str_ends_with($sendToJid, '@lid')) {
                 $contactPhone = preg_replace('/\D/', '', $conversation->contact_phone ?? '');
-                // Only use contact_phone if it looks like a real phone number (10-15 digits)
-                if (strlen($contactPhone) >= 10 && strlen($contactPhone) <= 15) {
+                if (strlen($contactPhone) >= 10) {
                     $sendToJid = $contactPhone . '@s.whatsapp.net';
                     Log::info('AI Agent: Resolved LID to phone for sending', [
                         'conversationId' => $conversation->id,
@@ -1090,15 +1103,22 @@ class WhatsappController extends Controller
                         'resolvedJid' => $sendToJid,
                     ]);
                 } else {
-                    // Send directly to LID — WhatsApp service will handle routing
-                    Log::info('AI Agent: Sending directly to LID JID (no valid phone available)', [
+                    Log::error('AI Agent: Cannot send to LID JID - no valid phone number available', [
                         'conversationId' => $conversation->id,
                         'remoteJid' => $sendToJid,
+                        'contactPhone' => $conversation->contact_phone,
                     ]);
+                    return;
                 }
             }
 
-            // Send response via WhatsApp service (correct endpoint)
+            Log::info('AI Agent: Sending via WhatsApp service', [
+                'serviceUrl' => $this->serviceUrl,
+                'sessionId' => $session->id,
+                'sendToJid' => $sendToJid,
+                'responseLength' => strlen($aiResponse),
+            ]);
+
             $response = Http::timeout(30)->post("{$this->serviceUrl}/messages/send/text", [
                 'sessionId' => $session->id,
                 'to' => $sendToJid,
@@ -1106,6 +1126,11 @@ class WhatsappController extends Controller
             ]);
 
             if ($response->successful()) {
+                Log::info('AI Agent: === SUCCESS - Message sent via WhatsApp ===', [
+                    'conversationId' => $conversation->id,
+                    'sendToJid' => $sendToJid,
+                    'messageId' => $response->json('data.messageId'),
+                ]);
                 // Save AI response as outgoing message
                 WhatsappMessage::create([
                     'id' => Str::uuid(),
@@ -1211,20 +1236,27 @@ class WhatsappController extends Controller
                     'remoteJid' => $conversation->remote_jid,
                 ]);
             } else {
-                Log::error('Failed to send AI Agent response via WhatsApp', [
+                Log::error('AI Agent: === FAILED - WhatsApp service returned error ===', [
                     'sessionId' => $session->id,
                     'conversationId' => $conversation->id,
+                    'sendToJid' => $sendToJid,
                     'statusCode' => $response->status(),
-                    'error' => $response->body(),
+                    'error' => substr($response->body(), 0, 500),
                 ]);
             }
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error('AI Agent: === FAILED - Cannot connect to WhatsApp service ===', [
+                'sessionId' => $session->id,
+                'serviceUrl' => $this->serviceUrl,
+                'error' => $e->getMessage(),
+            ]);
         } catch (\InvalidArgumentException $e) {
-            Log::error('AI Agent configuration error', [
+            Log::error('AI Agent: === FAILED - Configuration error ===', [
                 'sessionId' => $session->id,
                 'error' => $e->getMessage(),
             ]);
         } catch (\Exception $e) {
-            Log::error('AI Agent unexpected error', [
+            Log::error('AI Agent: === FAILED - Unexpected error ===', [
                 'sessionId' => $session->id,
                 'conversationId' => $conversation->id,
                 'error' => $e->getMessage(),
