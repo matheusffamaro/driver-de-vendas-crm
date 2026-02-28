@@ -138,7 +138,7 @@ class EmailAccountController extends Controller
         // Validate state and get stored data
         $stateData = \Cache::get("oauth_state_{$provider}_{$request->state}");
         if (!$stateData) {
-            $frontendUrl = env('FRONTEND_URL', 'http://localhost:3100');
+            $frontendUrl = config('app.frontend_url', 'http://localhost:3100');
             return redirect()->to("{$frontendUrl}/settings?tab=email&status=error&message=" . urlencode("Invalid or expired OAuth session. Please try again."));
         }
 
@@ -196,12 +196,10 @@ class EmailAccountController extends Controller
             // Dispatch sync job
             SyncEmailAccountJob::dispatch($account);
 
-            // Redirect back to frontend with success
-            $frontendUrl = env('FRONTEND_URL', 'http://localhost:3100');
+            $frontendUrl = config('app.frontend_url', 'http://localhost:3100');
             return redirect()->to("{$frontendUrl}/settings?tab=email&status=success&message=" . urlencode("Email connected successfully"));
         } catch (\Exception $e) {
-            // Redirect back to frontend with error
-            $frontendUrl = env('FRONTEND_URL', 'http://localhost:3100');
+            $frontendUrl = config('app.frontend_url', 'http://localhost:3100');
             return redirect()->to("{$frontendUrl}/settings?tab=email&status=error&message=" . urlencode($e->getMessage()));
         }
     }
