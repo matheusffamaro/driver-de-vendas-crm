@@ -892,10 +892,6 @@ class WhatsappController extends Controller
             $isRecent = (time() - $messageTime) < 300; // 5 minutes
         }
         
-        // #region agent log
-        @file_put_contents(storage_path('logs/debug-43ddee.log'), json_encode(['sessionId'=>'43ddee','hypothesisId'=>'H-C','location'=>'WhatsappController.php:eligibility','message'=>'AI eligibility gate','data'=>['fromMe'=>$fromMe,'isGroup'=>$isGroup,'type'=>$data['type']??'text','isHistorical'=>$isHistorical,'isRecent'=>$isRecent,'timestamp'=>$messageTimestamp,'text'=>substr($data['text']??$data['body']??'',0,80),'willProcess'=>(!$fromMe&&!$isGroup&&($data['type']??'text')==='text'&&!$isHistorical&&$isRecent)],'timestamp'=>round(microtime(true)*1000)])."\n",FILE_APPEND);
-        // #endregion
-        
         if (!$fromMe && !$isGroup && ($data['type'] ?? 'text') === 'text' && !$isHistorical && $isRecent) {
             $this->processAiAgentResponse($session, $conversation, $data['text'] ?? $data['body'] ?? '');
         }
@@ -906,15 +902,7 @@ class WhatsappController extends Controller
      */
     private function processAiAgentResponse(WhatsappSession $session, WhatsappConversation $conversation, string $messageText): void
     {
-        // #region agent log
-        $__dbg = function(string $msg, array $data = [], string $hid = '') { @file_put_contents(storage_path('logs/debug-43ddee.log'), json_encode(['sessionId'=>'43ddee','hypothesisId'=>$hid,'location'=>'WhatsappController.php:processAiAgentResponse','message'=>$msg,'data'=>$data,'timestamp'=>round(microtime(true)*1000)])."\n", FILE_APPEND); };
-        // #endregion
-
         try {
-            // #region agent log
-            $__dbg('START', ['sessionId'=>$session->id,'convId'=>$conversation->id,'remoteJid'=>$conversation->remote_jid,'contactPhone'=>$conversation->contact_phone,'tenantId'=>$session->tenant_id,'msg'=>substr($messageText,0,80)], 'H-C');
-            // #endregion
-
             Log::info('AI Agent: === START processing ===', [
                 'sessionId' => $session->id,
                 'conversationId' => $conversation->id,
@@ -964,9 +952,6 @@ class WhatsappController extends Controller
                 ->first();
 
             if ($humanMessage) {
-                // #region agent log
-                $__dbg('BLOCKED:human_takeover', ['convId'=>$conversation->id,'blockMsgId'=>$humanMessage->id,'senderName'=>$humanMessage->sender_name,'senderId'=>$humanMessage->sender_id,'content'=>substr($humanMessage->content??'',0,50),'createdAt'=>$humanMessage->created_at?->toDateTimeString()], 'H-A');
-                // #endregion
                 Log::info('AI Agent: BLOCKED - Human takeover detected', [
                     'conversationId' => $conversation->id,
                     'blockingMessageId' => $humanMessage->id,
@@ -1011,17 +996,10 @@ class WhatsappController extends Controller
                 }
             }
 
-            // #region agent log
-            $__dbg('AI_AGENT_QUERY', ['sessionId'=>$session->id,'tenantId'=>$session->tenant_id,'phoneNumber'=>$session->phone_number,'foundAgent'=>$aiAgent?true:false,'agentId'=>$aiAgent?->id,'agentName'=>$aiAgent?->name,'agentSessionId'=>$aiAgent?->whatsapp_session_id,'agentIsActive'=>$aiAgent?->is_active], 'H-B');
-            // #endregion
-
             if (!$aiAgent) {
                 $allAgents = \App\Models\AiChatAgent::withoutGlobalScopes()
                     ->where('tenant_id', $session->tenant_id)
                     ->get(['id', 'name', 'is_active', 'whatsapp_session_id']);
-                // #region agent log
-                $__dbg('BLOCKED:no_agent', ['sessionId'=>$session->id,'tenantId'=>$session->tenant_id,'phoneNumber'=>$session->phone_number,'allAgents'=>$allAgents->toArray()], 'H-B');
-                // #endregion
                 Log::info('AI Agent: BLOCKED - No matching agent found', [
                     'sessionId' => $session->id,
                     'tenantId' => $session->tenant_id,
@@ -1104,10 +1082,6 @@ class WhatsappController extends Controller
 
             $result = $aiService->generateChatResponse($messageText, $context, $instructions, $conversation->id);
 
-            // #region agent log
-            $__dbg('AI_RESULT', ['success'=>$result['success']??false,'hasResponse'=>!empty($result['response']),'error'=>$result['message']??null,'reason'=>$result['reason']??null,'responseLen'=>strlen($result['response']??''),'preview'=>substr($result['response']??'',0,80)], 'H-D');
-            // #endregion
-
             if (!$result['success'] || empty($result['response'])) {
                 Log::warning('AI Agent failed to generate response', [
                     'sessionId' => $session->id,
@@ -1163,10 +1137,6 @@ class WhatsappController extends Controller
                 'to' => $sendToJid,
                 'text' => $aiResponse,
             ]);
-
-            // #region agent log
-            $__dbg('WHATSAPP_SEND', ['status'=>$response->status(),'successful'=>$response->successful(),'body'=>substr($response->body(),0,200),'serviceUrl'=>$this->serviceUrl,'sendToJid'=>$sendToJid], 'H-E');
-            // #endregion
 
             if ($response->successful()) {
                 Log::info('AI Agent: === SUCCESS - Message sent via WhatsApp ===', [
@@ -1288,26 +1258,17 @@ class WhatsappController extends Controller
                 ]);
             }
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
-            // #region agent log
-            $__dbg('EXCEPTION:connection', ['error'=>$e->getMessage(),'serviceUrl'=>$this->serviceUrl], 'H-E');
-            // #endregion
             Log::error('AI Agent: === FAILED - Cannot connect to WhatsApp service ===', [
                 'sessionId' => $session->id,
                 'serviceUrl' => $this->serviceUrl,
                 'error' => $e->getMessage(),
             ]);
         } catch (\InvalidArgumentException $e) {
-            // #region agent log
-            $__dbg('EXCEPTION:config', ['error'=>$e->getMessage()], 'H-D');
-            // #endregion
             Log::error('AI Agent: === FAILED - Configuration error ===', [
                 'sessionId' => $session->id,
                 'error' => $e->getMessage(),
             ]);
         } catch (\Exception $e) {
-            // #region agent log
-            $__dbg('EXCEPTION:general', ['error'=>$e->getMessage(),'file'=>$e->getFile(),'line'=>$e->getLine()], 'H-D');
-            // #endregion
             Log::error('AI Agent: === FAILED - Unexpected error ===', [
                 'sessionId' => $session->id,
                 'conversationId' => $conversation->id,
