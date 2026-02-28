@@ -327,6 +327,19 @@ export default function SettingsPage() {
   const [emailCampaignsLeadsTier, setEmailCampaignsLeadsTier] = useState<string>('')
   const [showCancelEmailCampaignsAddonModal, setShowCancelEmailCampaignsAddonModal] = useState(false)
   const [showCancelSubscriptionModal, setShowCancelSubscriptionModal] = useState(false)
+  const [showImapModal, setShowImapModal] = useState(false)
+  const [imapForm, setImapForm] = useState({
+    email: '',
+    account_name: '',
+    imap_host: '',
+    imap_port: 993,
+    imap_encryption: 'ssl' as 'ssl' | 'tls' | 'none',
+    smtp_host: '',
+    smtp_port: 465,
+    smtp_encryption: 'ssl' as 'ssl' | 'tls' | 'none',
+    password: '',
+  })
+  const [imapConnecting, setImapConnecting] = useState(false)
   const EMAIL_CAMPAIGNS_TIERS = [
     { id: '1000', label: '0 - 1.000 leads', price_monthly: 29.90 },
     { id: '5000', label: '1.001 - 5.000 leads', price_monthly: 79.90 },
@@ -1057,9 +1070,7 @@ export default function SettingsPage() {
 
                 {/* IMAP/SMTP */}
                 <button
-                  onClick={() => {
-                    toast.info('Em breve', 'Configuração IMAP/SMTP estará disponível em breve')
-                  }}
+                  onClick={() => setShowImapModal(true)}
                   className="flex items-center justify-center gap-3 px-4 py-3 rounded-lg border-2 border-gray-200 dark:border-gray-700 hover:border-purple-500 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/10 transition-all group"
                 >
                   <Mail className="w-5 h-5 text-purple-600 dark:text-purple-400" />
@@ -3120,6 +3131,196 @@ export default function SettingsPage() {
                   <span>Confirmar</span>
                 </button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* IMAP/SMTP Connection Modal */}
+      <AnimatePresence>
+        {showImapModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowImapModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                    <Mail className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Conectar via IMAP/SMTP</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Configure os dados do servidor de email</p>
+                  </div>
+                </div>
+              </div>
+
+              <form onSubmit={async (e) => {
+                e.preventDefault()
+                setImapConnecting(true)
+                try {
+                  await emailApi.accounts.connectImap(imapForm)
+                  toast.success('Conta conectada', 'Sua conta IMAP/SMTP foi conectada com sucesso.')
+                  setShowImapModal(false)
+                  setImapForm({ email: '', account_name: '', imap_host: '', imap_port: 993, imap_encryption: 'ssl', smtp_host: '', smtp_port: 465, smtp_encryption: 'ssl', password: '' })
+                  queryClient.invalidateQueries({ queryKey: ['email', 'accounts'] })
+                } catch (error: any) {
+                  const msg = error?.response?.data?.error || error?.response?.data?.errors?.email?.[0] || 'Falha na conexão. Verifique os dados e tente novamente.'
+                  toast.error('Erro na conexão', msg)
+                } finally {
+                  setImapConnecting(false)
+                }
+              }} className="p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                    <input
+                      type="email"
+                      required
+                      value={imapForm.email}
+                      onChange={(e) => setImapForm(f => ({ ...f, email: e.target.value }))}
+                      placeholder="seu@email.com"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nome da conta</label>
+                    <input
+                      type="text"
+                      required
+                      value={imapForm.account_name}
+                      onChange={(e) => setImapForm(f => ({ ...f, account_name: e.target.value }))}
+                      placeholder="Ex: Email Comercial"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Servidor de Recebimento (IMAP)</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2 sm:col-span-1">
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Host IMAP</label>
+                      <input
+                        type="text"
+                        required
+                        value={imapForm.imap_host}
+                        onChange={(e) => setImapForm(f => ({ ...f, imap_host: e.target.value }))}
+                        placeholder="imap.exemplo.com"
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Porta</label>
+                      <input
+                        type="number"
+                        required
+                        value={imapForm.imap_port}
+                        onChange={(e) => setImapForm(f => ({ ...f, imap_port: parseInt(e.target.value) || 993 }))}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Criptografia</label>
+                      <select
+                        value={imapForm.imap_encryption}
+                        onChange={(e) => setImapForm(f => ({ ...f, imap_encryption: e.target.value as 'ssl' | 'tls' | 'none' }))}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      >
+                        <option value="ssl">SSL</option>
+                        <option value="tls">TLS</option>
+                        <option value="none">Nenhuma</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Servidor de Envio (SMTP)</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2 sm:col-span-1">
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Host SMTP</label>
+                      <input
+                        type="text"
+                        required
+                        value={imapForm.smtp_host}
+                        onChange={(e) => setImapForm(f => ({ ...f, smtp_host: e.target.value }))}
+                        placeholder="smtp.exemplo.com"
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Porta</label>
+                      <input
+                        type="number"
+                        required
+                        value={imapForm.smtp_port}
+                        onChange={(e) => setImapForm(f => ({ ...f, smtp_port: parseInt(e.target.value) || 465 }))}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Criptografia</label>
+                      <select
+                        value={imapForm.smtp_encryption}
+                        onChange={(e) => setImapForm(f => ({ ...f, smtp_encryption: e.target.value as 'ssl' | 'tls' | 'none' }))}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      >
+                        <option value="ssl">SSL</option>
+                        <option value="tls">TLS</option>
+                        <option value="none">Nenhuma</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Senha</label>
+                  <input
+                    type="password"
+                    required
+                    value={imapForm.password}
+                    onChange={(e) => setImapForm(f => ({ ...f, password: e.target.value }))}
+                    placeholder="Senha do email"
+                    className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Para Gmail, use uma senha de aplicativo. Para outros provedores, use a senha da conta.
+                  </p>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowImapModal(false)}
+                    className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium text-sm"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={imapConnecting}
+                    className="flex-1 px-4 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 disabled:opacity-50 text-white rounded-lg transition-colors font-medium text-sm flex items-center justify-center gap-2"
+                  >
+                    {imapConnecting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Mail className="w-4 h-4" />
+                    )}
+                    {imapConnecting ? 'Conectando...' : 'Conectar'}
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </motion.div>
         )}

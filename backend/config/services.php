@@ -33,6 +33,13 @@ return [
         'redirect' => env('MICROSOFT_REDIRECT_URI', env('APP_URL') . '/api/email/accounts/oauth/outlook/callback'),
     ],
 
+    // Outlook alias (EmailAccountController uses config("services.{$provider}.*") where provider = "outlook")
+    'outlook' => [
+        'client_id' => env('MICROSOFT_CLIENT_ID', ''),
+        'client_secret' => env('MICROSOFT_CLIENT_SECRET', ''),
+        'redirect' => env('MICROSOFT_REDIRECT_URI', env('APP_URL') . '/api/email/accounts/oauth/outlook/callback'),
+    ],
+
     // AI Provider selection
     'ai' => [
         'provider' => env('AI_PROVIDER', 'groq'), // groq, gemini, openai

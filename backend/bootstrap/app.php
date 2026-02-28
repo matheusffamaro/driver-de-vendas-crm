@@ -31,6 +31,18 @@ return Application::configure(basePath: dirname(__DIR__))
         // Check for expired trials every hour
         $schedule->command('subscriptions:expire-trials')
                  ->hourly();
+
+        // Sync all active email accounts every 5 minutes
+        $schedule->command('email:sync-accounts')
+                 ->everyFiveMinutes()
+                 ->withoutOverlapping()
+                 ->runInBackground();
+
+        // Send scheduled email campaigns every minute
+        $schedule->command('email:send-scheduled-campaigns')
+                 ->everyMinute()
+                 ->withoutOverlapping()
+                 ->runInBackground();
     })
     ->withExceptions(function (Exceptions $exceptions) {
         // Adiciona CORS em respostas de exceção (500 etc.) para o frontend poder ler o erro
