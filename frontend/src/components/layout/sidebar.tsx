@@ -30,6 +30,7 @@ import { useThemeStore } from '@/stores/theme-store'
 import { usePermissionStore } from '@/stores/permission-store'
 import { useTenantStore } from '@/stores/tenant-store'
 import { authApi } from '@/lib/api'
+import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { toast } from '@/hooks/use-toast'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -78,6 +79,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen = false, onMobileClose
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const router = useRouter()
+  const queryClient = useQueryClient()
   const { user, logout } = useAuthStore()
   const { clearPermissions, hasPermission, isAdmin } = usePermissionStore()
   const { role } = usePermissionStore()
@@ -191,6 +193,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen = false, onMobileClose
     logout()
     clearPermissions()
     clearAddons()
+    queryClient.clear()
     toast.success('Até logo!', 'Você foi desconectado')
     router.push('/auth/login')
   }
