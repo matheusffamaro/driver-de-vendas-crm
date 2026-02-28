@@ -989,8 +989,30 @@ class WhatsappController extends Controller
                 })
                 ->first();
 
+            // Fallback: session may have been recreated with new UUID — match by phone number
+            if (!$aiAgent && $session->phone_number) {
+                $relatedSessionIds = WhatsappSession::where('phone_number', $session->phone_number)
+                    ->where('tenant_id', $session->tenant_id)
+                    ->pluck('id');
+                if ($relatedSessionIds->isNotEmpty()) {
+                    $aiAgent = \App\Models\AiChatAgent::withoutGlobalScopes()
+                        ->with('documents')
+                        ->where('tenant_id', $session->tenant_id)
+                        ->where('is_active', true)
+                        ->whereIn('whatsapp_session_id', $relatedSessionIds)
+                        ->first();
+                    if ($aiAgent) {
+                        Log::info('AI Agent: Found via phone number fallback', [
+                            'sessionId' => $session->id,
+                            'phoneNumber' => $session->phone_number,
+                            'agentSessionId' => $aiAgent->whatsapp_session_id,
+                        ]);
+                    }
+                }
+            }
+
             // #region agent log
-            $__dbg('AI_AGENT_QUERY', ['sessionId'=>$session->id,'tenantId'=>$session->tenant_id,'foundAgent'=>$aiAgent?true:false,'agentId'=>$aiAgent?->id,'agentName'=>$aiAgent?->name,'agentSessionId'=>$aiAgent?->whatsapp_session_id,'agentIsActive'=>$aiAgent?->is_active], 'H-B');
+            $__dbg('AI_AGENT_QUERY', ['sessionId'=>$session->id,'tenantId'=>$session->tenant_id,'phoneNumber'=>$session->phone_number,'foundAgent'=>$aiAgent?true:false,'agentId'=>$aiAgent?->id,'agentName'=>$aiAgent?->name,'agentSessionId'=>$aiAgent?->whatsapp_session_id,'agentIsActive'=>$aiAgent?->is_active], 'H-B');
             // #endregion
 
             if (!$aiAgent) {
@@ -998,7 +1020,7 @@ class WhatsappController extends Controller
                     ->where('tenant_id', $session->tenant_id)
                     ->get(['id', 'name', 'is_active', 'whatsapp_session_id']);
                 // #region agent log
-                $__dbg('BLOCKED:no_agent', ['sessionId'=>$session->id,'tenantId'=>$session->tenant_id,'allAgents'=>$allAgents->toArray()], 'H-B');
+                $__dbg('BLOCKED:no_agent', ['sessionId'=>$session->id,'tenantId'=>$session->tenant_id,'phoneNumber'=>$session->phone_number,'allAgents'=>$allAgents->toArray()], 'H-B');
                 // #endregion
                 Log::info('AI Agent: BLOCKED - No matching agent found', [
                     'sessionId' => $session->id,
