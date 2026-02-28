@@ -1125,6 +1125,36 @@ class WhatsappController extends Controller
                 }
             }
 
+            // Validate JID before sending — detect LID numbers disguised as phone JIDs
+            $phoneDigits = preg_replace('/@.*$/', '', $sendToJid);
+            $validCountryCodes = ['1','7','20','27','30','31','32','33','34','36','39','40','41','43','44','45','46','47','48','49','51','52','53','54','55','56','57','58','60','61','62','63','64','65','66','81','82','84','86','90','91','92','93','94','95','98'];
+            $startsWithValid = false;
+            foreach ($validCountryCodes as $cc) {
+                if (str_starts_with($phoneDigits, $cc)) {
+                    $startsWithValid = true;
+                    break;
+                }
+            }
+            if (!$startsWithValid && !str_ends_with($sendToJid, '@lid')) {
+                Log::warning('AI Agent: BLOCKED - Invalid phone JID (likely LID disguised as phone)', [
+                    'conversationId' => $conversation->id,
+                    'sendToJid' => $sendToJid,
+                    'phoneDigits' => $phoneDigits,
+                ]);
+                // Save response in CRM but don't try to send via WhatsApp
+                WhatsappMessage::create([
+                    'id' => Str::uuid(),
+                    'conversation_id' => $conversation->id,
+                    'message_id' => Str::uuid()->toString(),
+                    'direction' => 'outgoing',
+                    'type' => 'text',
+                    'content' => $aiResponse,
+                    'status' => 'failed',
+                    'sender_name' => 'AI Agent',
+                ]);
+                return;
+            }
+
             Log::info('AI Agent: Sending via WhatsApp service', [
                 'serviceUrl' => $this->serviceUrl,
                 'sessionId' => $session->id,
