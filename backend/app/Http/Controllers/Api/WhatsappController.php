@@ -1108,8 +1108,10 @@ class WhatsappController extends Controller
             // Resolve LID JID to phone number before sending
             $sendToJid = $conversation->remote_jid;
             if (str_ends_with($sendToJid, '@lid')) {
+                $lidNumber = preg_replace('/@lid$/', '', $sendToJid);
                 $contactPhone = preg_replace('/\D/', '', $conversation->contact_phone ?? '');
-                if (strlen($contactPhone) >= 10) {
+
+                if ($contactPhone !== $lidNumber && strlen($contactPhone) >= 10) {
                     $sendToJid = $contactPhone . '@s.whatsapp.net';
                     Log::info('AI Agent: Resolved LID to phone for sending', [
                         'conversationId' => $conversation->id,
@@ -1117,12 +1119,13 @@ class WhatsappController extends Controller
                         'resolvedJid' => $sendToJid,
                     ]);
                 } else {
-                    Log::error('AI Agent: Cannot send to LID JID - no valid phone number available', [
+                    // contact_phone IS the LID number — pass original @lid JID
+                    // Node.js will try to resolve or send to LID directly
+                    Log::info('AI Agent: Sending to original LID JID (no real phone available)', [
                         'conversationId' => $conversation->id,
-                        'remoteJid' => $sendToJid,
+                        'lidJid' => $sendToJid,
                         'contactPhone' => $conversation->contact_phone,
                     ]);
-                    return;
                 }
             }
 

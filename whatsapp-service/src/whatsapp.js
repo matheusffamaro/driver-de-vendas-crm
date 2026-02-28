@@ -692,8 +692,28 @@ class WhatsAppManager {
     if (!session || session.status !== 'connected') {
       throw new Error('Session not connected');
     }
-    const jid = this.formatJid(to);
-    const result = await session.socket.sendMessage(jid, { text });
+
+    let jid;
+    if (this.isLidJid(to)) {
+      const resolved = this.resolveLidToPhoneJid(sessionId, to);
+      if (resolved) {
+        jid = resolved;
+        logger.info(`Send: resolved LID ${to} -> ${jid}`);
+      } else {
+        jid = to;
+        logger.info(`Send: using original LID JID ${to} (no phone mapping)`);
+      }
+    } else {
+      jid = this.formatJid(to);
+    }
+
+    const SEND_TIMEOUT_MS = 15000;
+    const result = await Promise.race([
+      session.socket.sendMessage(jid, { text }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`sendMessage timeout after ${SEND_TIMEOUT_MS}ms for JID: ${jid}`)), SEND_TIMEOUT_MS)
+      ),
+    ]);
     return { messageId: result.key.id, to: jid, status: 'sent' };
   }
 
@@ -702,7 +722,14 @@ class WhatsAppManager {
     if (!session || session.status !== 'connected') {
       throw new Error('Session not connected');
     }
-    const jid = this.formatJid(to);
+
+    let jid;
+    if (this.isLidJid(to)) {
+      const resolved = this.resolveLidToPhoneJid(sessionId, to);
+      jid = resolved || to;
+    } else {
+      jid = this.formatJid(to);
+    }
 
     let messageContent = {};
 
